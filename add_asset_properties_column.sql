@@ -1,0 +1,1 @@
+ALTER TABLE asset ADD COLUMN properties TEXT COMMENT '资产属性';

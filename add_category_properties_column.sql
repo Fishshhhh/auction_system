@@ -1,0 +1,1 @@
+ALTER TABLE asset_category ADD COLUMN properties TEXT COMMENT '分类属性';

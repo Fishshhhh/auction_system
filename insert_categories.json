@@ -1,0 +1,32 @@
+[
+  {
+    "name": "二手设备",
+    "code": "EQUIPMENT",
+    "description": "各类二手工业设备",
+    "status": 1
+  },
+  {
+    "name": "办公用品",
+    "code": "OFFICE",
+    "description": "办公家具及设备",
+    "status": 1
+  },
+  {
+    "name": "交通工具",
+    "code": "VEHICLE",
+    "description": "汽车、摩托车等交通工具",
+    "status": 1
+  },
+  {
+    "name": "电子产品",
+    "code": "ELECTRONICS",
+    "description": "手机、电脑等电子产品",
+    "status": 1
+  },
+  {
+    "name": "家居用品",
+    "code": "HOME",
+    "description": "家具、家电等家居用品",
+    "status": 1
+  }
+]

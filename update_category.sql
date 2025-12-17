@@ -1,0 +1,1 @@
+UPDATE asset_category SET properties='{\"品牌\":{\"苹果\":\"Apple\",\"联想\":\"Lenovo\"},\"尺寸\":[\"15寸\",\"14寸\",\"13寸\"]}' WHERE code='ELECTRONICS';

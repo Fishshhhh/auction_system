@@ -1,0 +1,99 @@
+'use strict'
+const utils = require('./utils')
+const webpack = require('webpack')
+const config = require('../config')
+const merge = require('webpack-merge')
+const path = require('path')
+const baseWebpackConfig = require('./webpack.base.conf')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const FriendlyErrorsPlugin = require('friendly-errors-webpack-plugin')
+const portfinder = require('portfinder')
+
+const HOST = process.env.HOST
+const PORT = process.env.PORT && Number(process.env.PORT)
+
+const devWebpackConfig = merge(baseWebpackConfig, {
+  module: {
+    rules: utils.styleLoaders({ sourceMap: config.dev.cssSourceMap, usePostCSS: true })
+  },
+  // cheap-module-eval-source-map is faster for development
+  devtool: config.dev.devtool,
+
+  // these devServer options should be customized in /config/index.js
+  devServer: {
+    clientLogLevel: 'none',
+    historyApiFallback: {
+      rewrites: [
+        { from: /^\/$/, to: '/index.html' },
+        { from: /.*/, to: path.posix.join(config.dev.assetsPublicPath, 'index.html') },
+      ],
+    },
+    hot: true,
+    contentBase: path.resolve(__dirname, '../'), // 设置为项目根目录
+    compress: true,
+    host: HOST || config.dev.host,
+    port: PORT || config.dev.port,
+    open: config.dev.autoOpenBrowser,
+    overlay: config.dev.errorOverlay
+      ? { warnings: false, errors: true }
+      : false,
+    publicPath: config.dev.assetsPublicPath,
+    proxy: config.dev.proxyTable,
+    quiet: true, // necessary for FriendlyErrorsPlugin
+    watchOptions: {
+      poll: config.dev.poll,
+    },
+    inline: true,
+    watchContentBase: false, // 禁用这个选项避免错误
+    // 添加以下配置以解决热更新问题
+    disableHostCheck: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
+    }
+  },
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env': require('../config/dev.env')
+    }),
+    new webpack.HotModuleReplacementPlugin(),
+    new webpack.NamedModulesPlugin(), // HMR shows correct file names in console on update.
+    new webpack.NoEmitOnErrorsPlugin(),
+    // https://github.com/ampedandwired/html-webpack-plugin
+    new HtmlWebpackPlugin({
+      filename: 'index.html',
+      template: 'index.html',
+      inject: true
+    }),
+    // copy custom static assets
+    new CopyWebpackPlugin([
+      {
+        from: path.resolve(__dirname, '../static'),
+        to: config.dev.assetsSubDirectory,
+        ignore: ['.*']
+      }
+    ])
+  ]
+})
+
+module.exports = new Promise((resolve, reject) => {
+  const port = process.env.PORT || config.dev.port;
+  // publish the new Port, necessary for e2e tests
+  process.env.PORT = port
+  // add port to devServer config
+  devWebpackConfig.devServer.port = port
+
+  // Add FriendlyErrorsPlugin
+  devWebpackConfig.plugins.push(new FriendlyErrorsPlugin({
+    compilationSuccessInfo: {
+      messages: [`Your application is running here: http://${devWebpackConfig.devServer.host}:${port}`],
+    },
+    onErrors: config.dev.notifyOnErrors
+    ? utils.createNotifierCallback()
+    : undefined
+  }))
+
+  resolve(devWebpackConfig)
+})
