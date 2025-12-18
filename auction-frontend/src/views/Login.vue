@@ -57,6 +57,12 @@ export default {
       loginLoading: false
     }
   },
+  mounted() {
+    // 检查是否已经登录
+    if (this.$store.state.user.isLoggedIn) {
+      this.$router.push('/layout')
+    }
+  },
   methods: {
     async handleLogin() {
       try {

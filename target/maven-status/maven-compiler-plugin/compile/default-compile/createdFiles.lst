@@ -4,13 +4,16 @@ com\auction\system\repository\AuctionAssetRepository.class
 com\auction\system\Application.class
 com\auction\system\entity\AssetCategory.class
 com\auction\system\controller\AuthController.class
+com\auction\system\controller\ScheduledTaskController.class
 com\auction\system\repository\AuctionTemplateRepository.class
 com\auction\system\entity\Asset.class
 com\auction\system\entity\User.class
 com\auction\system\controller\AssetController.class
 com\auction\system\controller\UserController.class
 com\auction\system\repository\AuctionRepository.class
+com\auction\system\service\ScheduledTaskService.class
 com\auction\system\service\AssetCategoryService.class
+com\auction\system\repository\ScheduledTaskRepository.class
 com\auction\system\service\AuctionTemplateService.class
 com\auction\system\entity\AuctionTemplate.class
 com\auction\system\repository\AssetCategoryRepository.class
@@ -25,6 +28,7 @@ com\auction\system\repository\SystemConfigRepository.class
 com\auction\system\entity\Auction.class
 com\auction\system\repository\AssetRepository.class
 com\auction\system\entity\OrderItem.class
+com\auction\system\entity\ScheduledTask.class
 com\auction\system\common\ResponseResult.class
 com\auction\system\service\SystemConfigService.class
 com\auction\system\repository\AssetImageRepository.class

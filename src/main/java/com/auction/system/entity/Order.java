@@ -25,14 +25,14 @@ public class Order {
     @Column(name = "auction_id", nullable = false)
     private Long auctionId;
     
-    // 删除原有的assetId字段，因为一个订单可能包含多个资产
+    // 删除原有的assetId字段，因为一个订单可以包含多个资产
     // @Column(name = "asset_id", nullable = false)
     // private Long assetId;
     
-    @Column(name = "buyer_user_id", nullable = false)
+    @Column(name = "buyer_id", nullable = false)
     private Long buyerUserId;
     
-    @Column(name = "seller_user_id", nullable = false)
+    @Column(name = "seller_id", nullable = false)
     private Long sellerUserId;
     
     @Column(name = "order_amount", precision = 10, scale = 2, nullable = false)

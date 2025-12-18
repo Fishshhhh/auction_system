@@ -27,10 +27,6 @@
             <i class="el-icon-time"></i>
             <span>拍卖列表</span>
           </el-menu-item>
-          <el-menu-item index="/my-assets">
-            <i class="el-icon-folder-opened"></i>
-            <span>我的资产</span>
-          </el-menu-item>
           <el-menu-item index="/my-bids">
             <i class="el-icon-document"></i>
             <span>我的出价</span>
@@ -42,6 +38,10 @@
           <el-menu-item index="/config">
             <i class="el-icon-setting"></i>
             <span>配置管理</span>
+          </el-menu-item>
+          <el-menu-item index="/scheduled-tasks">
+            <i class="el-icon-alarm-clock"></i>
+            <span>定时任务</span>
           </el-menu-item>
         </el-menu>
       </el-aside>

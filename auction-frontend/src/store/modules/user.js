@@ -1,6 +1,6 @@
 const state = {
-  isLoggedIn: false,
-  currentUser: {
+  isLoggedIn: localStorage.getItem('isLoggedIn') === 'true' || false,
+  currentUser: JSON.parse(localStorage.getItem('currentUser')) || {
     id: 0,
     username: '',
     fullName: '',
@@ -11,9 +11,11 @@ const state = {
 const mutations = {
   SET_LOGIN_STATUS(state, status) {
     state.isLoggedIn = status
+    localStorage.setItem('isLoggedIn', status)
   },
   SET_USER_INFO(state, user) {
     state.currentUser = user
+    localStorage.setItem('currentUser', JSON.stringify(user))
   }
 }
 
@@ -30,6 +32,9 @@ const actions = {
       fullName: '',
       userType: 4
     })
+    // 清除localStorage中的用户信息
+    localStorage.removeItem('isLoggedIn')
+    localStorage.removeItem('currentUser')
   }
 }
 

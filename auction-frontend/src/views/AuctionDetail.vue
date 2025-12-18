@@ -16,7 +16,8 @@
               </div>
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="拍卖编号">{{ auction.id }}</el-descriptions-item>
-                <el-descriptions-item label="资产名称">{{ auction.assetName }}</el-descriptions-item>
+                <el-descriptions-item label="资产名称">{{ assetInfo.name }}</el-descriptions-item>
+                <el-descriptions-item label="资产数量">{{ assetInfo.quantity }}</el-descriptions-item>
                 <el-descriptions-item label="起拍价">¥{{ auction.startPrice }}</el-descriptions-item>
                 <el-descriptions-item label="当前价">
                   <span class="current-price">¥{{ auction.currentPrice }}</span>
@@ -31,7 +32,7 @@
                   </el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="拍卖类型">
-                  <el-tag :type="getAuctionTypeTagType(auction.auctionType)">
+                  <el-tag :type="getAuctionTypeTagType(auction.auctionStatus)">
                     {{ getAuctionTypeText(auction.auctionType) }}
                   </el-tag>
                 </el-descriptions-item>
@@ -179,6 +180,11 @@
                 ¥{{ scope.row.bidPrice }}
               </template>
             </el-table-column>
+            <el-table-column label="资产数量" min-width="100">
+              <template slot-scope="scope">
+                {{ assetInfo.quantity }}
+              </template>
+            </el-table-column>
             <el-table-column prop="createdTime" label="出价时间" min-width="150">
               <template slot-scope="scope">
                 {{ formatDate(scope.row.createdTime) }}
@@ -204,145 +210,251 @@
 
 <script>
 import { auctionApi } from '../api/auctionApi'
+import { assetApi } from '../api/assetApi'
 
 export default {
   name: 'AuctionDetail',
   data() {
     return {
       auction: null,
+      assetInfo: {
+        name: '',
+        quantity: 0
+      },
       bids: [],
       bidForm: {
         bidPrice: 0
       },
       bidLoading: false,
-      countdown: '00:00:00'
+      countdown: '00:00:00',
+      countdownTimer: null, // 添加倒计时定时器引用
+      loadAuctionTimer: null // 添加加载拍卖定时器引用
     }
   },
   methods: {
     goBack() {
-      this.$router.go(-1)
+      // 清除所有定时器
+      if (this.countdownTimer) {
+        clearInterval(this.countdownTimer);
+        this.countdownTimer = null;
+      }
+      if (this.loadAuctionTimer) {
+        clearInterval(this.loadAuctionTimer);
+        this.loadAuctionTimer = null;
+      }
+      // 使用更可靠的路由导航方式返回拍卖列表
+      this.$router.push('/auctions');
     },
     
     async loadAuction() {
-      const auctionId = this.$route.params.id
+      // 先检查$route.params.id是否存在
+      const auctionId = this.$route.params && this.$route.params.id;
       if (!auctionId) {
-        this.$message.error('缺少拍卖ID参数')
-        return
+        this.$message.error('缺少拍卖ID参数');
+        // 清除可能存在的定时器
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+          this.countdownTimer = null;
+        }
+        if (this.loadAuctionTimer) {
+          clearInterval(this.loadAuctionTimer);
+          this.loadAuctionTimer = null;
+        }
+        // 如果没有拍卖ID，则直接跳转回拍卖列表
+        this.$router.push('/auctions');
+        return;
       }
       
       try {
-        const response = await auctionApi.getAuctionById(auctionId)
+        const response = await auctionApi.getAuctionById(auctionId);
         if (response.code === 200) {
-          this.auction = response.data
-          this.bidForm.bidPrice = this.getMinBidPrice()
-          this.startCountdown()
+          this.auction = response.data;
+          this.bidForm.bidPrice = this.getMinBidPrice();
+          this.startCountdown();
+          
+          // 加载资产信息
+          await this.loadAssetInfo();
         } else {
-          this.$message.error(response.message || '加载拍卖详情失败')
+          this.$message.error(response.message || '加载拍卖详情失败');
+          // 清除可能存在的定时器
+          if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
+          }
+          if (this.loadAuctionTimer) {
+            clearInterval(this.loadAuctionTimer);
+            this.loadAuctionTimer = null;
+          }
+          // 如果加载失败，也跳转回拍卖列表
+          this.$router.push('/auctions');
         }
       } catch (error) {
-        this.$message.error('加载拍卖详情失败: ' + (error.message || '未知错误'))
+        this.$message.error('加载拍卖详情失败: ' + (error.message || '未知错误'));
+        // 清除可能存在的定时器
+        if (this.countdownTimer) {
+          clearInterval(this.countdownTimer);
+          this.countdownTimer = null;
+        }
+        if (this.loadAuctionTimer) {
+          clearInterval(this.loadAuctionTimer);
+          this.loadAuctionTimer = null;
+        }
+        // 如果出现异常，也跳转回拍卖列表
+        this.$router.push('/auctions');
       }
     },
     
-    async loadBids() {
-      if (!this.auction) return
+    async loadAssetInfo() {
+      if (!this.auction) return;
       
       try {
-        const response = await auctionApi.getAuctionBids(this.auction.id)
-        if (response.code === 200) {
-          this.bids = response.data || []
+        // 获取拍卖关联的资产信息
+        const assetsResponse = await auctionApi.getAuctionAssets(this.auction.id);
+        if (assetsResponse.code === 200 && Array.isArray(assetsResponse.data) && assetsResponse.data.length > 0) {
+          // 获取第一个资产的详细信息（通常一个拍卖只有一个资产）
+          const auctionAsset = assetsResponse.data[0];
+          const assetResponse = await assetApi.getAssetById(auctionAsset.assetId);
+          if (assetResponse.code === 200 && assetResponse.data) {
+            this.assetInfo = {
+              name: assetResponse.data.name,
+              quantity: auctionAsset.quantity
+            };
+          }
         }
       } catch (error) {
-        this.$message.error('加载出价记录失败: ' + (error.message || '未知错误'))
+        console.error('加载资产信息失败:', error);
+      }
+      
+      // 加载出价记录
+      this.loadBids();
+    },
+    
+    async loadBids() {
+      // 确保拍卖信息存在后再加载出价记录
+      if (!this.auction) return;
+      
+      try {
+        const response = await auctionApi.getAuctionBids(this.auction.id);
+        if (response.code === 200) {
+          this.bids = response.data || [];
+        }
+      } catch (error) {
+        this.$message.error('加载出价记录失败: ' + (error.message || '未知错误'));
+        this.bids = [];
       }
     },
     
     startCountdown() {
-      if (!this.auction || !this.auction.endTime) return
-      
-      const updateCountdown = () => {
-        const now = new Date()
-        const endTime = new Date(this.auction.endTime)
-        const diff = endTime - now
-        
-        if (diff <= 0) {
-          this.countdown = '已结束'
-          return
-        }
-        
-        const hours = Math.floor(diff / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-        
-        this.countdown = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      // 先清除已有的倒计时定时器
+      if (this.countdownTimer) {
+        clearInterval(this.countdownTimer);
       }
       
-      updateCountdown()
-      setInterval(updateCountdown, 1000)
+      if (!this.auction || !this.auction.endTime) return;
+      
+      const updateCountdown = () => {
+        // 检查组件是否仍然存在且auction数据有效
+        if (this._isDestroyed || !this.auction) {
+          // 如果组件已经被销毁，清除定时器并直接返回
+          if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
+          }
+          return;
+        }
+        
+        const now = new Date();
+        const endTime = new Date(this.auction.endTime);
+        const diff = endTime - now;
+        
+        if (diff <= 0) {
+          this.countdown = '已结束';
+          // 重新加载拍卖信息以更新状态
+          this.loadAuction();
+          return;
+        }
+        
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        if (days > 0) {
+          this.countdown = `${days}天${hours}小时`;
+        } else if (hours > 0) {
+          this.countdown = `${hours}小时${minutes}分钟`;
+        } else {
+          this.countdown = `${minutes}分${seconds}秒`;
+        }
+      };
+      
+      updateCountdown();
+      // 存储定时器引用以便后续清理
+      this.countdownTimer = setInterval(updateCountdown, 1000);
     },
     
     async submitBid() {
-      if (!this.auction) return
+      if (!this.auction) return;
       
-      this.bidLoading = true
+      this.bidLoading = true;
       try {
         const bidData = {
           auctionId: this.auction.id,
           userId: 1, // 模拟用户ID
           bidPrice: this.bidForm.bidPrice,
           bidStatus: 1
-        }
+        };
         
-        const response = await auctionApi.submitBid(this.auction.id, bidData)
+        const response = await auctionApi.submitBid(this.auction.id, bidData);
         if (response.code === 200) {
-          this.$message.success('出价成功!')
-          this.loadAuction() // 重新加载拍卖信息
-          this.loadBids() // 重新加载出价记录
+          this.$message.success('出价成功!');
+          this.loadAuction(); // 重新加载拍卖信息
+          this.loadBids(); // 重新加载出价记录
         } else {
-          this.$message.error(response.message || '出价失败')
+          this.$message.error(response.message || '出价失败');
         }
       } catch (error) {
-        this.$message.error('出价失败: ' + (error.message || '未知错误'))
+        this.$message.error('出价失败: ' + (error.message || '未知错误'));
       } finally {
-        this.bidLoading = false
+        this.bidLoading = false;
       }
     },
     
     async startAuction() {
-      if (!this.auction) return
+      if (!this.auction) return;
       
       try {
-        const response = await auctionApi.startAuction(this.auction.id)
+        const response = await auctionApi.startAuction(this.auction.id);
         if (response.code === 200) {
-          this.$message.success('拍卖已开始!')
-          this.loadAuction()
+          this.$message.success('拍卖已开始!');
+          this.loadAuction();
         } else {
-          this.$message.error(response.message || '操作失败')
+          this.$message.error(response.message || '操作失败');
         }
       } catch (error) {
-        this.$message.error('操作失败: ' + (error.message || '未知错误'))
+        this.$message.error('操作失败: ' + (error.message || '未知错误'));
       }
     },
     
     async endAuction() {
-      if (!this.auction) return
+      if (!this.auction) return;
       
       try {
-        const response = await auctionApi.endAuction(this.auction.id)
+        const response = await auctionApi.endAuction(this.auction.id);
         if (response.code === 200) {
-          this.$message.success('拍卖已结束!')
-          this.loadAuction()
+          this.$message.success('拍卖已结束!');
+          this.loadAuction();
         } else {
-          this.$message.error(response.message || '操作失败')
+          this.$message.error(response.message || '操作失败');
         }
       } catch (error) {
-        this.$message.error('操作失败: ' + (error.message || '未知错误'))
+        this.$message.error('操作失败: ' + (error.message || '未知错误'));
       }
     },
     
     formatDate(dateString) {
-      if (!dateString) return ''
-      return new Date(dateString).toLocaleString('zh-CN')
+      if (!dateString) return '';
+      return new Date(dateString).toLocaleString('zh-CN');
     },
     
     getAuctionStatusText(status) {
@@ -352,8 +464,8 @@ export default {
         3: '已结束',
         4: '已成交',
         5: '流拍'
-      }
-      return statusMap[status] || '未知'
+      };
+      return statusMap[status] || '未知';
     },
     
     getAuctionStatusType(status) {
@@ -363,8 +475,8 @@ export default {
         3: 'info',    // 已结束
         4: 'primary', // 已成交
         5: 'danger'   // 流拍
-      }
-      return typeMap[status] || ''
+      };
+      return typeMap[status] || '';
     },
     
     getAuctionTypeText(type) {
@@ -374,8 +486,8 @@ export default {
         3: '无底价',
         4: '定向',
         5: '降价'
-      }
-      return typeMap[type] || '未知'
+      };
+      return typeMap[type] || '未知';
     },
     
     getAuctionTypeTagType(type) {
@@ -385,8 +497,8 @@ export default {
         3: 'success', // 无底价
         4: 'info',    // 定向
         5: 'danger'   // 降价
-      }
-      return typeMap[type] || ''
+      };
+      return typeMap[type] || '';
     },
     
     getBidStatusText(status) {
@@ -395,8 +507,8 @@ export default {
         2: '无效',
         3: '胜出',
         4: '失败'
-      }
-      return statusMap[status] || '未知'
+      };
+      return statusMap[status] || '未知';
     },
     
     getBidStatusType(status) {
@@ -405,57 +517,80 @@ export default {
         2: 'danger',
         3: 'primary',
         4: 'info'
-      }
-      return typeMap[status] || ''
+      };
+      return typeMap[status] || '';
     },
     
     canBid() {
-      if (!this.auction) return false
+      if (!this.auction) return false;
       // 只有进行中的拍卖才能出价
-      if (this.auction.auctionStatus !== 2) return false
-      return true
+      if (this.auction.auctionStatus !== 2) return false;
+      return true;
     },
     
     getCannotBidReason() {
-      if (!this.auction) return '无法出价'
+      if (!this.auction) return '无法出价';
       
       switch (this.auction.auctionStatus) {
         case 1:
-          return '拍卖尚未开始'
+          return '拍卖尚未开始';
         case 3:
         case 4:
         case 5:
-          return '拍卖已结束'
+          return '拍卖已结束';
         default:
-          return '暂无法出价'
+          return '暂无法出价';
       }
     },
     
     getMinBidPrice() {
-      if (!this.auction) return 0
+      if (!this.auction) return 0;
       
       // 降价拍卖必须等于当前价格
       if (this.auction.auctionType === 5) {
-        return this.auction.currentPrice
+        return this.auction.currentPrice;
       }
       
       // 其他拍卖类型至少要比当前价格高一个加价幅度
       if (this.auction.bidIncrement) {
-        return this.auction.currentPrice + this.auction.bidIncrement
+        return this.auction.currentPrice + this.auction.bidIncrement;
       }
       
       // 默认至少高100
-      return this.auction.currentPrice + 100
+      return this.auction.currentPrice + 100;
     },
     
     isAdmin() {
       // 模拟管理员权限检查
-      return true
+      return true;
     }
   },
   mounted() {
-    this.loadAuction()
-    this.loadBids()
+    // 初始加载拍卖和出价记录
+    this.loadAuction();
+  },
+  beforeDestroy() {
+    // 组件销毁前清除所有定时器
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    if (this.loadAuctionTimer) {
+      clearInterval(this.loadAuctionTimer);
+      this.loadAuctionTimer = null;
+    }
+  },
+  
+  destroyed() {
+    // 确保组件销毁后清除所有定时器
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+    if (this.loadAuctionTimer) {
+      clearInterval(this.loadAuctionTimer);
+      this.loadAuctionTimer = null;
+    }
   }
 }
 </script>

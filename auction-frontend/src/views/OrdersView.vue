@@ -5,10 +5,41 @@
         <span>我的订单</span>
       </div>
       
-      <el-table :data="myOrders" stripe style="width: 100%">
+      <el-table :data="processedOrders" stripe style="width: 100%">
         <el-table-column prop="orderNo" label="订单编号" min-width="150"></el-table-column>
-        <el-table-column prop="assetId" label="资产ID" min-width="150"></el-table-column>
-        <el-table-column prop="orderAmount" label="订单金额" min-width="100">
+        <el-table-column prop="auctionId" label="拍卖编号" min-width="100">
+          <template slot-scope="scope">
+            <el-button type="text" @click="viewAuctionDetail(scope.row.auctionId)">
+              {{ scope.row.auctionId }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="资产信息" min-width="200">
+          <template slot-scope="scope">
+            <div v-if="scope.row.assetInfo && scope.row.assetInfo.name">
+              {{ scope.row.assetInfo.name }}
+            </div>
+            <div v-else>
+              未知资产
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="资产数量" min-width="100">
+          <template slot-scope="scope">
+            <div v-if="scope.row.assetInfo && scope.row.assetInfo.quantity">
+              {{ scope.row.assetInfo.quantity }}
+            </div>
+            <div v-else>
+              0
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="每台金额" min-width="100">
+          <template slot-scope="scope">
+            ¥{{ (scope.row.orderAmount / (scope.row.assetInfo && scope.row.assetInfo.quantity || 1)).toFixed(2) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="orderAmount" label="总金额" min-width="100">
           <template slot-scope="scope">
             ¥{{ scope.row.orderAmount }}
           </template>
@@ -69,12 +100,15 @@
 
 <script>
 import { orderApi } from '../api/orderApi'
+import { auctionApi } from '../api/auctionApi'
+import { assetApi } from '../api/assetApi'
 
 export default {
   name: 'OrdersView',
   data() {
     return {
       myOrders: [],
+      processedOrders: [],
       payDialogVisible: false,
       completeDialogVisible: false,
       selectedOrder: {}
@@ -88,6 +122,8 @@ export default {
         if (response.code === 200) {
           // 确保响应数据是数组类型
           this.myOrders = Array.isArray(response.data) ? response.data : []
+          // 处理订单数据
+          await this.processOrders()
         }
       } catch (error) {
         console.error('加载我的订单失败:', error)
@@ -96,14 +132,54 @@ export default {
         this.$message.error('加载订单失败: ' + error.message)
       }
     },
+    
+    async processOrders() {
+      const processed = []
+      for (const order of this.myOrders) {
+        // 获取拍卖信息
+        try {
+          const auctionResponse = await auctionApi.getAuctionById(order.auctionId)
+          if (auctionResponse.code === 200 && auctionResponse.data) {
+            order.auction = auctionResponse.data
+            
+            // 获取拍卖关联的资产信息
+            const assetsResponse = await auctionApi.getAuctionAssets(order.auctionId)
+            if (assetsResponse.code === 200 && Array.isArray(assetsResponse.data) && assetsResponse.data.length > 0) {
+              // 获取第一个资产的详细信息（通常一个拍卖只有一个资产）
+              const auctionAsset = assetsResponse.data[0]
+              const assetResponse = await assetApi.getAssetById(auctionAsset.assetId)
+              if (assetResponse.code === 200 && assetResponse.data) {
+                order.assetInfo = {
+                  name: assetResponse.data.name,
+                  quantity: auctionAsset.quantity // 注意：这里显示的是拍卖时的资产数量，不是资产本身的总数量
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('获取拍卖或资产信息失败:', error)
+        }
+        
+        processed.push(order)
+      }
+      
+      this.processedOrders = processed
+    },
+    
+    viewAuctionDetail(auctionId) {
+      this.$router.push(`/auctions/${auctionId}`)
+    },
+    
     payOrder(order) {
       this.selectedOrder = order
       this.payDialogVisible = true
     },
+    
     completeOrder(order) {
       this.selectedOrder = order
       this.completeDialogVisible = true
     },
+    
     async confirmPay() {
       try {
         const response = await orderApi.payOrder(this.selectedOrder.id)
@@ -118,6 +194,7 @@ export default {
         this.$message.error('支付失败: ' + error.message)
       }
     },
+    
     async confirmComplete() {
       try {
         const response = await orderApi.completeOrder(this.selectedOrder.id)
@@ -132,10 +209,12 @@ export default {
         this.$message.error('操作失败: ' + error.message)
       }
     },
+    
     formatDate(dateString) {
       if (!dateString) return ''
       return new Date(dateString).toLocaleString('zh-CN')
     },
+    
     getOrderStatusText(status) {
       const statusMap = {
         1: '待付款',
@@ -147,6 +226,7 @@ export default {
       }
       return statusMap[status] || '未知'
     },
+    
     getOrderStatusType(status) {
       const typeMap = {
         1: '',

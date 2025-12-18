@@ -3,14 +3,17 @@
     <el-card>
       <div slot="header" class="card-header">
         <span>资产列表</span>
-        <el-input
-          v-model="searchKeyword"
-          placeholder="搜索资产..."
-          style="width: 300px;"
-          @keyup.enter.native="searchAssets"
-        >
-          <el-button slot="append" icon="el-icon-search" @click="searchAssets"></el-button>
-        </el-input>
+        <div>
+          <el-button type="primary" @click="showCreateDialog">添加资产</el-button>
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索资产..."
+            style="width: 300px; margin-left: 20px;"
+            @keyup.enter.native="searchAssets"
+          >
+            <el-button slot="append" icon="el-icon-search" @click="searchAssets"></el-button>
+          </el-input>
+        </div>
       </div>
       
       <el-table :data="assets" stripe style="width: 100%">
@@ -22,26 +25,35 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
+        <!-- 添加资产属性列 -->
+        <el-table-column label="资产属性" min-width="200">
+          <template slot-scope="scope">
+            <div v-if="scope.row.properties">
+              <div v-for="(value, key) in parseProperties(scope.row.properties)" :key="key">
+                <el-tag size="mini" style="margin: 2px;">{{ key }}: {{ value }}</el-tag>
+              </div>
+            </div>
+            <span v-else>无属性</span>
+          </template>
+        </el-table-column>
         <el-table-column label="创建时间" min-width="150">
           <template slot-scope="scope">
-            {{ formatDate(scope.row.createdTime) }}
+            <span v-if="scope.row.createdTime">{{ formatDate(scope.row.createdTime) }}</span>
+            <span v-else>无</span>
           </template>
         </el-table-column>
         <el-table-column label="相关拍卖" min-width="100">
           <template slot-scope="scope">
             <el-button 
-              v-if="scope.row.auctionStatus" 
               size="small" 
               @click="viewRelatedAuctions(scope.row)">
               查看
             </el-button>
-            <span v-else>无</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" min-width="200">
           <template slot-scope="scope">
             <el-button 
-              v-if="scope.row.status === 4" 
               size="small" 
               type="primary" 
               @click="createAuction(scope.row)">
@@ -82,6 +94,12 @@
             <el-tag :type="getAssetStatusType(selectedAsset.status)">
               {{ getAssetStatusText(selectedAsset.status) }}
             </el-tag>
+          </el-descriptions-item>
+          <!-- 显示资产属性 -->
+          <el-descriptions-item v-if="selectedAsset.properties" label="资产属性">
+            <div v-for="(value, key) in parseProperties(selectedAsset.properties)" :key="key">
+              <strong>{{ key }}:</strong> {{ value }}
+            </div>
           </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(selectedAsset.createdTime) }}</el-descriptions-item>
         </el-descriptions>
@@ -132,7 +150,6 @@
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button 
-          v-if="selectedAsset && selectedAsset.status === 4" 
           type="primary" 
           @click="createAuction(selectedAsset)">
           创建拍卖
@@ -143,144 +160,6 @@
           @click="bidAsset(selectedAsset)">
           出价
         </el-button>
-      </div>
-    </el-dialog>
-    
-    <!-- 相关拍卖对话框 -->
-    <el-dialog :visible.sync="relatedAuctionsDialogVisible" title="相关拍卖信息" width="800px">
-      <div v-if="selectedAsset">
-        <h4>资产：{{ selectedAsset.name }}</h4>
-        <el-table :data="relatedAuctions" stripe style="width: 100%">
-          <el-table-column prop="id" label="拍卖编号" min-width="100">
-            <template slot-scope="scope">
-              <el-button type="text" @click="viewAuctionDetail(scope.row.id)">{{ scope.row.id }}</el-button>
-            </template>
-          </el-table-column>
-          <el-table-column prop="startPrice" label="起拍价" min-width="100">
-            <template slot-scope="scope">
-              ¥{{ scope.row.startPrice }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="currentPrice" label="当前价" min-width="100">
-            <template slot-scope="scope">
-              ¥{{ scope.row.currentPrice }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="auctionType" label="拍卖类型" min-width="120">
-            <template slot-scope="scope">
-              <el-tag :type="getAuctionTypeTagType(scope.row.auctionType)">
-                {{ getAuctionTypeText(scope.row.auctionType) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="拍卖状态" min-width="100">
-            <template slot-scope="scope">
-              <el-tag :type="getAuctionStatusType(scope.row.auctionStatus)">
-                {{ getAuctionStatusText(scope.row.auctionStatus) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" min-width="100">
-            <template slot-scope="scope">
-              <el-button size="small" @click="viewAuctionDetail(scope.row.id)">查看详情</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-      
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="relatedAuctionsDialogVisible = false">关闭</el-button>
-      </div>
-    </el-dialog>
-    
-    <!-- 创建拍卖对话框 -->
-    <el-dialog :visible.sync="auctionDialogVisible" title="创建拍卖" width="600px">
-      <el-form :model="auctionForm" label-width="120px">
-        <el-form-item label="资产名称">
-          <span>{{ selectedAsset ? selectedAsset.name : '' }}</span>
-        </el-form-item>
-        <el-form-item label="资产数量" prop="quantity">
-          <el-input-number v-model="auctionForm.quantity" :min="1" :max="999" controls-position="right" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="起拍价" prop="startPrice">
-          <el-input-number v-model="auctionForm.startPrice" :min="0" controls-position="right" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="保留价" prop="reservePrice">
-          <el-input-number v-model="auctionForm.reservePrice" :min="0" controls-position="right" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="拍卖类型" prop="auctionType">
-          <el-select v-model="auctionForm.auctionType" placeholder="请选择拍卖类型" style="width: 100%">
-            <el-option label="公开实时竞价" :value="1"></el-option>
-            <el-option label="暗拍" :value="2"></el-option>
-            <el-option label="无底价拍卖" :value="3"></el-option>
-            <el-option label="定向拍卖" :value="4"></el-option>
-            <el-option label="降价拍卖" :value="5"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="拍卖开始时间" prop="startTime">
-          <el-date-picker
-            v-model="auctionForm.startTime"
-            type="datetime"
-            placeholder="选择拍卖开始时间"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="拍卖结束时间" prop="endTime">
-          <el-date-picker
-            v-model="auctionForm.endTime"
-            type="datetime"
-            placeholder="选择拍卖结束时间"
-            style="width: 100%"
-          />
-        </el-form-item>
-        
-        <!-- 公开竞价和无底价拍卖参数 -->
-        <template v-if="auctionForm.auctionType === 1 || auctionForm.auctionType === 3">
-          <el-form-item label="加价幅度" prop="bidIncrement">
-            <el-input-number v-model="auctionForm.bidIncrement" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="延时时间(分钟)" prop="extendTime">
-            <el-input-number v-model="auctionForm.extendTime" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="延时阈值(秒)" prop="extendThreshold">
-            <el-input-number v-model="auctionForm.extendThreshold" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-        </template>
-        
-        <!-- 降价拍卖参数 -->
-        <template v-if="auctionForm.auctionType === 5">
-          <el-form-item label="初始价" prop="initialPrice">
-            <el-input-number v-model="auctionForm.initialPrice" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="降价阶梯" prop="priceStep">
-            <el-input-number v-model="auctionForm.priceStep" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="降价周期(分钟)" prop="priceDropInterval">
-            <el-input-number v-model="auctionForm.priceDropInterval" :min="1" controls-position="right" style="width: 100%" />
-          </el-form-item>
-          <el-form-item label="最低价" prop="minPrice">
-            <el-input-number v-model="auctionForm.minPrice" :min="0" controls-position="right" style="width: 100%" />
-          </el-form-item>
-        </template>
-        
-        <!-- 定向拍卖参数 -->
-        <template v-if="auctionForm.auctionType === 4">
-          <el-form-item label="需要资格认证" prop="qualificationRequired">
-            <el-switch v-model="auctionForm.qualificationRequired"></el-switch>
-          </el-form-item>
-        </template>
-        
-        <!-- 保证金参数 -->
-        <el-form-item label="需要保证金" prop="depositRequired">
-          <el-switch v-model="auctionForm.depositRequired"></el-switch>
-        </el-form-item>
-        <el-form-item v-if="auctionForm.depositRequired" label="保证金金额" prop="depositAmount">
-          <el-input-number v-model="auctionForm.depositAmount" :min="0" controls-position="right" style="width: 100%" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="auctionDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveAuction">创建拍卖</el-button>
       </div>
     </el-dialog>
     
@@ -308,6 +187,30 @@
         <el-button type="primary" @click="submitBid">提交出价</el-button>
       </div>
     </el-dialog>
+    
+    <!-- 引用创建拍卖对话框组件 -->
+    <CreateAuctionDialog 
+      :visible.sync="auctionDialogVisible" 
+      :asset="selectedAsset"
+      @submit="saveAuction"
+    />
+    
+    <!-- 引用创建资产对话框组件 -->
+    <CreateAssetDialog
+      :visible.sync="createDialogVisible"
+      :editing-asset="editingAsset"
+      :asset="editingAsset ? selectedAsset : null"
+      :categories="categories"
+      @submit="saveAsset"
+    />
+    
+    <!-- 引用相关拍卖对话框组件 -->
+    <RelatedAuctionsDialog
+      :visible.sync="relatedAuctionsDialogVisible"
+      :asset="selectedAsset"
+      :auctions="relatedAuctions"
+      @view-auction-detail="viewAuctionDetail"
+    />
   </div>
 </template>
 
@@ -315,9 +218,17 @@
 import { assetApi } from '../api/assetApi'
 import { configApi } from '../api/configApi'
 import { auctionApi } from '../api/auctionApi'
+import CreateAuctionDialog from '../components/assets/CreateAuctionDialog.vue'
+import CreateAssetDialog from '../components/assets/CreateAssetDialog.vue'
+import RelatedAuctionsDialog from '../components/assets/RelatedAuctionsDialog.vue'
 
 export default {
   name: 'AssetsView',
+  components: {
+    CreateAuctionDialog,
+    CreateAssetDialog,
+    RelatedAuctionsDialog
+  },
   data() {
     return {
       assets: [],
@@ -330,37 +241,13 @@ export default {
       relatedAuctionsDialogVisible: false,
       auctionDialogVisible: false,
       bidDialogVisible: false,
+      createDialogVisible: false,
       selectedAsset: null,
       relatedAuctions: [],
       bidForm: {
         bidPrice: 0
       },
-      auctionForm: {
-        assetId: null,
-        templateId: null,
-        startPrice: 0,
-        currentPrice: 0,
-        reservePrice: 0,
-        buyItNowPrice: null,
-        startTime: '',
-        endTime: '',
-        auctionStatus: 1,
-        auctionType: 1,
-        bidIncrement: 0,
-        extendTime: 0,
-        extendThreshold: 0,
-        initialPrice: 0,
-        priceStep: 0,
-        priceDropInterval: 1,
-        minPrice: 0,
-        nextPriceDropTime: null,
-        qualificationRequired: false,
-        winnerUserId: null,
-        finalPrice: null,
-        depositRequired: false,
-        depositAmount: 0,
-        quantity: 1
-      }
+      editingAsset: false
     }
   },
   methods: {
@@ -370,7 +257,8 @@ export default {
         console.log('API Response:', response) // 调试日志
         if (response && response.code === 200) {
           this.assets = response.data || []
-          this.total = response.data ? response.data.length : 0
+          this.total = this.assets.length
+          console.log('Loaded assets:', this.assets) // 调试日志
         } else {
           this.$message.error((response && response.message) || '加载资产列表失败')
           this.assets = []
@@ -386,8 +274,10 @@ export default {
     async loadCategories() {
       try {
         const response = await configApi.getCategories()
+        console.log('Categories API Response:', response) // 调试日志
         if (response && response.code === 200) {
           this.categories = response.data || []
+          console.log('Loaded categories:', this.categories) // 调试日志
         } else {
           this.$message.error((response && response.message) || '加载资产分类失败')
         }
@@ -464,64 +354,37 @@ export default {
     },
     createAuction(asset) {
       this.selectedAsset = asset
-      // 初始化拍卖表单
-      this.auctionForm = {
-        assetId: asset.id,
-        templateId: null,
-        startPrice: asset.startingPrice || 0,
-        currentPrice: asset.startingPrice || 0,
-        reservePrice: asset.reservePrice || 0,
-        buyItNowPrice: null,
-        startTime: asset.auctionStartTime || '',
-        endTime: asset.auctionEndTime || '',
-        auctionStatus: 1, // 未开始
-        auctionType: asset.auctionType || 1,
-        bidIncrement: 0,
-        extendTime: 0,
-        extendThreshold: 0,
-        initialPrice: asset.startingPrice || 0,
-        priceStep: 0,
-        priceDropInterval: 1,
-        minPrice: 0,
-        nextPriceDropTime: null,
-        qualificationRequired: false,
-        winnerUserId: null,
-        finalPrice: null,
-        depositRequired: false,
-        depositAmount: 0,
-        quantity: 1
-      }
       this.auctionDialogVisible = true
     },
-    async saveAuction() {
+    async saveAuction(form) {
       try {
         // 创建拍卖
-        const response = await auctionApi.createAuction(this.auctionForm)
+        const response = await auctionApi.createAuction(form);
         
         if (response.code === 200) {
-          this.$message.success('拍卖创建成功')
-          this.auctionDialogVisible = false
-          this.loadAssets() // 重新加载资产列表以更新状态
+          this.$message.success('拍卖创建成功');
+          this.auctionDialogVisible = false;
+          this.loadAssets(); // 重新加载资产列表以更新状态
           
           // 添加拍卖资产关联
           if (this.selectedAsset && response.data && response.data.id) {
             const auctionAssetResponse = await auctionApi.addAssetToAuction(response.data.id, {
               assetId: this.selectedAsset.id,
-              quantity: this.auctionForm.quantity,
-              startPrice: this.auctionForm.startPrice,
-              currentPrice: this.auctionForm.currentPrice,
-              reservePrice: this.auctionForm.reservePrice
-            })
+              quantity: form.quantity,
+              startPrice: form.startPrice,
+              currentPrice: form.currentPrice,
+              reservePrice: form.reservePrice
+            });
             
             if (auctionAssetResponse.code !== 200) {
-              this.$message.warning('拍卖资产关联创建失败: ' + (auctionAssetResponse.message || '未知错误'))
+              this.$message.warning('拍卖资产关联创建失败: ' + (auctionAssetResponse.message || '未知错误'));
             }
           }
         } else {
-          this.$message.error(response.message || '拍卖创建失败')
+          this.$message.error(response.message || '拍卖创建失败');
         }
       } catch (error) {
-        this.$message.error('拍卖创建失败: ' + (error.message || '未知错误'))
+        this.$message.error('拍卖创建失败: ' + (error.message || '未知错误'));
       }
     },
     bidAsset(asset) {
@@ -560,6 +423,14 @@ export default {
     formatDate(dateString) {
       if (!dateString) return ''
       return new Date(dateString).toLocaleString('zh-CN')
+    },
+    parseProperties(properties) {
+      try {
+        return JSON.parse(properties);
+      } catch (e) {
+        console.error('解析资产属性失败:', e);
+        return {};
+      }
     },
     getAssetStatusText(status) {
       const statusMap = {
@@ -601,28 +472,38 @@ export default {
       }
       return typeMap[status] || ''
     },
-    getAuctionTypeText(type) {
-      const typeMap = {
-        1: '公开实时竞价',
-        2: '暗拍',
-        3: '无底价',
-        4: '定向',
-        5: '降价'
-      }
-      return typeMap[type] || '未知'
+    // 添加资产相关方法
+    showCreateDialog() {
+      this.editingAsset = false;
+      this.selectedAsset = null;
+      this.createDialogVisible = true;
     },
-    getAuctionTypeTagType(type) {
-      const typeMap = {
-        1: 'primary', // 公开实时竞价
-        2: 'warning', // 暗拍
-        3: 'success', // 无底价
-        4: 'info',    // 定向
-        5: 'danger'   // 降价
+    async saveAsset(form) {
+      try {
+        let response;
+        if (this.editingAsset) {
+          // 更新资产
+          response = await assetApi.updateAsset(form.id, form);
+        } else {
+          // 创建资产
+          // 设置所有者ID为当前用户（模拟）
+          response = await assetApi.createAsset(form);
+        }
+        
+        if (response.code === 200) {
+          this.$message.success(this.editingAsset ? '更新成功' : '创建成功');
+          this.createDialogVisible = false;
+          this.loadAssets(); // 重新加载资产列表
+        } else {
+          this.$message.error(response.message || (this.editingAsset ? '更新失败' : '创建失败'));
+        }
+      } catch (error) {
+        this.$message.error(this.editingAsset ? '更新失败: ' + (error.message || '未知错误') : '创建失败: ' + (error.message || '未知错误'));
       }
-      return typeMap[type] || ''
     }
   },
   mounted() {
+    console.log('AssetsView mounted')
     this.loadAssets()
     this.loadCategories()
   }
@@ -649,5 +530,9 @@ export default {
   width: 100%;
   height: 300px;
   object-fit: cover;
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>

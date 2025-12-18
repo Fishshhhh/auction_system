@@ -19,11 +19,11 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- 插入用户数据
 INSERT INTO `user` (id, username, password, email, phone, full_name, user_type, status, created_time) VALUES
-(1, 'admin', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'admin@example.com', '13800000000', '管理员', 1, 1, NOW()),
-(2, 'operator', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'operator@example.com', '13800000001', '运营', 2, 1, NOW()),
-(3, 'seller', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'seller@example.com', '13800000002', '卖家', 3, 1, NOW()),
-(4, 'buyer', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'buyer@example.com', '13800000003', '买家', 4, 1, NOW()),
-(5, 'buyer2', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'buyer2@example.com', '13800000004', '买家2', 4, 1, NOW());
+(1, 'admin', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'admin@example.com', '13800000000', '管理员用户', 1, 1, NOW()),
+(2, 'operator', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'operator@example.com', '13800000001', '运营人员', 2, 1, NOW()),
+(3, 'seller', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'seller@example.com', '13800000002', '卖家用户', 3, 1, NOW()),
+(4, 'buyer', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'buyer@example.com', '13800000003', '买家用户', 4, 1, NOW()),
+(5, 'buyer2', '$2a$10$abcdefghijklmnopqrstuv.wxYZ1234567890abcdefghijklmnop', 'buyer2@example.com', '13800000004', '买家用户2', 4, 1, NOW());
 
 -- 插入资产分类数据
 INSERT INTO asset_category (id, name, code, description, status, created_time) VALUES
@@ -80,8 +80,8 @@ INSERT INTO bid (id, auction_id, user_id, bid_price, quantity, bid_status, creat
 (3, 2, 4, 7500.00, 1, 1, DATE_ADD(NOW(), INTERVAL -15 MINUTE));
 
 -- 插入订单数据
-INSERT INTO orders (id, order_no, auction_id, buyer_id, seller_id, bid_id, order_amount, quantity, order_status, created_time, updated_time, payment_time) VALUES
-(1, 'ORD2023120001', 1, 5, 3, 2, 15200.00, 1, 2, DATE_ADD(NOW(), INTERVAL -15 MINUTE), DATE_ADD(NOW(), INTERVAL -15 MINUTE), DATE_ADD(NOW(), INTERVAL -10 MINUTE));
+INSERT INTO orders (id, order_no, auction_id, buyer_id, seller_id, order_amount, quantity, order_status, created_time, updated_time, payment_time) VALUES
+(1, 'ORD2023120001', 1, 5, 3, 15200.00, 1, 2, DATE_ADD(NOW(), INTERVAL -15 MINUTE), DATE_ADD(NOW(), INTERVAL -15 MINUTE), DATE_ADD(NOW(), INTERVAL -10 MINUTE));
 
 -- 插入订单项数据
 INSERT INTO order_item (id, order_id, asset_id, quantity, unit_price, subtotal_amount, created_time) VALUES

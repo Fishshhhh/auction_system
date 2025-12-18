@@ -9,6 +9,7 @@ import com.auction.system.repository.OrderItemRepository;
 import com.auction.system.repository.AuctionAssetRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -115,45 +116,113 @@ public class OrderService {
      * @param auctionService 拍卖服务（通过参数传入，避免循环依赖）
      * @return 创建的订单
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public Order createOrderFromAuction(Auction auction, AuctionService auctionService) throws Exception {
+        System.out.println("开始创建订单，拍卖ID: " + auction.getId());
+        
+        // 检查拍卖是否有获胜者
         if (auction.getWinnerUserId() == null) {
-            throw new Exception("拍卖没有获胜者，无法创建订单");
+            System.out.println("拍卖没有获胜者，无法创建订单");
+            return null;
         }
+        
+        // 检查获胜者ID是否有效
+        if (auction.getWinnerUserId() <= 0) {
+            System.out.println("拍卖获胜者ID无效: " + auction.getWinnerUserId());
+            return null;
+        }
+        
+        System.out.println("获胜者用户ID: " + auction.getWinnerUserId());
+        System.out.println("最终价格: " + auction.getFinalPrice());
         
         // 创建订单
         Order order = new Order();
         order.setOrderNo(generateOrderNo()); // 生成订单号
         order.setAuctionId(auction.getId());
-        // assetId不再适用，因为一个拍卖可以包含多个资产
-        order.setBuyerUserId(auction.getWinnerUserId());
-        // 这里应该从资产信息中获取卖家ID，暂时设为默认值1
-        order.setSellerUserId(1L);
-        order.setOrderAmount(auction.getFinalPrice());
-        order.setActualAmount(auction.getFinalPrice());
-        order.setQuantity(1); // 总数量，默认为1
-        order.setOrderStatus(1); // 待付款
-        order.setCreatedTime(LocalDateTime.now());
-        order.setUpdatedTime(LocalDateTime.now());
         
+        // 设置买家ID（获胜者）
+        order.setBuyerUserId(auction.getWinnerUserId());
+        
+        // 设置卖家ID（从资产信息中获取，如果没有则使用默认值1）
+        order.setSellerUserId(1L);
+        
+        // 设置订单金额（基于拍卖的最终价格和资产数量计算总金额）
+        BigDecimal totalAmount = calculateTotalAmount(auction);
+        order.setOrderAmount(totalAmount);
+        order.setActualAmount(totalAmount);
+        
+        // 设置数量
+        order.setQuantity(getAuctionAssetQuantity(auction));
+        order.setOrderStatus(1); // 待付款
+        
+        System.out.println("准备保存订单: " + order);
+        
+        // 保存订单
         Order savedOrder = orderRepository.save(order);
+        System.out.println("订单保存成功，订单ID: " + savedOrder.getId());
         
         // 创建订单项（针对每个拍卖资产）
         List<AuctionAsset> auctionAssets = auctionAssetRepository.findByAuctionId(auction.getId());
+        System.out.println("找到 " + auctionAssets.size() + " 个拍卖资产");
+        
+        if (auctionAssets.isEmpty()) {
+            System.out.println("警告：拍卖没有关联的资产");
+        }
+        
         for (AuctionAsset auctionAsset : auctionAssets) {
+            System.out.println("处理资产: " + auctionAsset.getAssetId());
             OrderItem item = new OrderItem();
             item.setOrderId(savedOrder.getId());
             item.setAssetId(auctionAsset.getAssetId());
-            item.setQuantity(auctionAsset.getQuantity());
-            item.setUnitPrice(auctionAsset.getCurrentPrice());
+            item.setQuantity(auctionAsset.getQuantity() != null ? auctionAsset.getQuantity() : 0);
+            item.setUnitPrice(auctionAsset.getCurrentPrice() != null ? auctionAsset.getCurrentPrice() : BigDecimal.ZERO);
+            
             // 计算小计金额 = 单价 * 数量
-            BigDecimal subtotal = auctionAsset.getCurrentPrice().multiply(new BigDecimal(auctionAsset.getQuantity()));
+            BigDecimal quantity = new BigDecimal(auctionAsset.getQuantity() != null ? auctionAsset.getQuantity() : 0);
+            BigDecimal unitPrice = auctionAsset.getCurrentPrice() != null ? auctionAsset.getCurrentPrice() : BigDecimal.ZERO;
+            BigDecimal subtotal = unitPrice.multiply(quantity);
             item.setSubtotalAmount(subtotal);
-            item.setCreatedTime(LocalDateTime.now());
-            item.setUpdatedTime(LocalDateTime.now());
+            
+            System.out.println("准备保存订单项: " + item);
             orderItemRepository.save(item);
+            System.out.println("订单项保存成功");
         }
         
+        System.out.println("订单创建完成，订单号: " + savedOrder.getOrderNo());
         return savedOrder;
+    }
+    
+    /**
+     * 计算拍卖总金额
+     * @param auction 拍卖对象
+     * @return 总金额
+     */
+    private BigDecimal calculateTotalAmount(Auction auction) {
+        if (auction.getFinalPrice() == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        Integer quantity = getAuctionAssetQuantity(auction);
+        if (quantity == null || quantity <= 0) {
+            return BigDecimal.ZERO;
+        }
+        
+        return auction.getFinalPrice().multiply(new BigDecimal(quantity));
+    }
+    
+    /**
+     * 获取拍卖资产总数量
+     * @param auction 拍卖对象
+     * @return 资产总数量
+     */
+    private Integer getAuctionAssetQuantity(Auction auction) {
+        List<AuctionAsset> auctionAssets = auctionAssetRepository.findByAuctionId(auction.getId());
+        if (auctionAssets.isEmpty()) {
+            return 0;
+        }
+        
+        // 通常一个拍卖只有一个资产，直接返回第一个资产的数量
+        return auctionAssets.get(0).getQuantity();
     }
     
     /**

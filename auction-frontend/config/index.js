@@ -22,7 +22,7 @@ module.exports = {
 
     // Various Dev Server settings
     host: 'localhost', // can be overwritten by process.env.HOST
-    port: 3000, // Force using port 3000
+    port: 3001, // Force using port 3001
     autoOpenBrowser: false,
     errorOverlay: true,
     notifyOnErrors: true,

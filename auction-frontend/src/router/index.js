@@ -4,11 +4,11 @@ import Layout from '@/views/Layout.vue'
 import Login from '@/views/Login.vue'
 import AssetsView from '../views/AssetsView.vue'
 import AuctionsView from '../views/AuctionsView.vue'
-import MyAssetsView from '../views/MyAssetsView.vue'
 import MyBidsView from '../views/MyBidsView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import ConfigManagement from '../views/ConfigManagement.vue'
 import AuctionDetail from '../views/AuctionDetail.vue'
+import ScheduledTasksView from '../views/ScheduledTasksView.vue'
 
 Vue.use(Router)
 
@@ -48,11 +48,6 @@ export default new Router({
           props: true
         },
         {
-          path: '/my-assets',
-          name: 'MyAssets',
-          component: MyAssetsView
-        },
-        {
           path: '/my-bids',
           name: 'MyBids',
           component: MyBidsView
@@ -66,6 +61,11 @@ export default new Router({
           path: '/config',
           name: 'Config',
           component: ConfigManagement
+        },
+        {
+          path: '/scheduled-tasks',
+          name: 'ScheduledTasks',
+          component: ScheduledTasksView
         }
       ]
     }

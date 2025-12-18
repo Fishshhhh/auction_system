@@ -166,7 +166,17 @@ public class AuctionController {
             Auction endedAuction = auctionService.endAuction(id);
             return ResponseResult.success("拍卖已结束", endedAuction);
         } catch (Exception e) {
+            e.printStackTrace();
+            // 即使发生异常，也要返回一个友好的错误消息
             return ResponseResult.error("结束失败: " + e.getMessage());
         }
+    }
+    
+    @GetMapping("/user/{userId}/bids")
+    @Operation(summary = "获取用户的出价记录")
+    public ResponseResult<List<Bid>> getUserBids(
+            @Parameter(description = "用户ID") @PathVariable Long userId) {
+        List<Bid> bids = auctionService.getBidsByUserId(userId);
+        return ResponseResult.success(bids);
     }
 }

@@ -138,6 +138,20 @@ export const auctionApi = {
     }
   },
   
+  // 获取拍卖关联的资产
+  async getAuctionAssets(auctionId) {
+    try {
+      const response = await apiClient.get(`/auctions/${auctionId}/assets`)
+      return response.data
+    } catch (error) {
+      return {
+        code: (error && error.code) || 500,
+        message: (error && error.message) || '未知错误',
+        data: null
+      }
+    }
+  },
+  
   // 获取用户出价记录
   async getUserBids(userId) {
     try {

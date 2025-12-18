@@ -18,10 +18,6 @@ public class Auction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    // 删除原有的assetId字段，因为现在支持多资产
-    // @Column(name = "asset_id", nullable = false)
-    // private Long assetId;
-    
     @Column(name = "template_id")
     private Long templateId;
     
@@ -94,6 +90,9 @@ public class Auction {
     
     @Column(name = "deposit_amount", precision = 10, scale = 2)
     private BigDecimal depositAmount; // 保证金金额
+    
+    @Column(name = "is_package_auction")
+    private Boolean isPackageAuction = false; // 是否打包拍卖
     
     @CreationTimestamp
     @Column(name = "created_time")

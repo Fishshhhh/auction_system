@@ -3,11 +3,13 @@ package com.auction.system.service;
 import com.auction.system.entity.Auction;
 import com.auction.system.entity.AuctionAsset;
 import com.auction.system.entity.Bid;
+import com.auction.system.entity.Order;
 import com.auction.system.repository.AuctionRepository;
 import com.auction.system.repository.AuctionAssetRepository;
 import com.auction.system.repository.BidRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -398,6 +400,24 @@ public class AuctionService {
      * @return 更新后的拍卖
      */
     public Auction endAuction(Long auctionId) throws Exception {
+        try {
+            // 使用新的事务来确保即使当前事务被标记为rollback-only也能执行
+            return endAuctionInNewTransaction(auctionId);
+        } catch (Exception e) {
+            // 捕获所有异常并重新抛出，确保控制器能正确处理
+            System.err.println("结束拍卖时发生异常: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+    
+    /**
+     * 在新的事务中结束拍卖，避免受外部事务状态影响
+     * @param auctionId 拍卖ID
+     * @return 更新后的拍卖
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
+    public Auction endAuctionInNewTransaction(Long auctionId) throws Exception {
         Optional<Auction> auctionOpt = auctionRepository.findById(auctionId);
         if (!auctionOpt.isPresent()) {
             throw new Exception("拍卖不存在");
@@ -408,8 +428,18 @@ public class AuctionService {
             throw new Exception("只有进行中的拍卖才能手动结束");
         }
         
-        finishAuction(auction);
-        return auctionRepository.save(auction);
+        try {
+            finishAuction(auction);
+            return auctionRepository.save(auction);
+        } catch (Exception e) {
+            // 如果在finishAuction过程中发生异常，我们仍然尝试保存拍卖状态
+            // 这样可以确保即使部分逻辑失败，拍卖状态也能得到更新
+            System.err.println("结束拍卖时发生异常: " + e.getMessage());
+            e.printStackTrace();
+            auction.setAuctionStatus(Auction.STATUS_UNSOLD);
+            auction.setEndTime(LocalDateTime.now());
+            return auctionRepository.save(auction);
+        }
     }
     
     /**
@@ -449,6 +479,12 @@ public class AuctionService {
         // 获取有效的出价
         List<Bid> validBids = getBidsByAuctionIdAndStatus(auction.getId(), 1);
         
+        // 如果是打包拍卖，只允许一个胜出者
+        if (auction.getIsPackageAuction() != null && auction.getIsPackageAuction()) {
+            finishPackageAuction(auction, validBids);
+            return;
+        }
+        
         // 按出价降序、时间升序排序（价格高者优先，同价时时间早者优先）
         List<Bid> sortedBids = validBids.stream()
                 .sorted((b1, b2) -> {
@@ -484,9 +520,74 @@ public class AuctionService {
             
             // 创建订单
             try {
-                orderService.createOrderFromAuction(auction, this);
+                com.auction.system.entity.Order order = orderService.createOrderFromAuction(auction, this);
+                if (order == null) {
+                    System.out.println("订单创建被跳过或失败");
+                } else {
+                    System.out.println("成功创建订单，订单号: " + order.getOrderNo());
+                }
             } catch (Exception e) {
                 // 记录错误但不影响拍卖状态更新
+                System.err.println("创建订单失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            // 流拍
+            auction.setAuctionStatus(Auction.STATUS_UNSOLD);
+            auction.setEndTime(LocalDateTime.now());
+        }
+    }
+    
+    /**
+     * 结束打包拍卖
+     * @param auction 拍卖对象
+     * @param validBids 有效出价列表
+     */
+    private void finishPackageAuction(Auction auction, List<Bid> validBids) {
+        // 按出价降序、时间升序排序（价格高者优先，同价时时间早者优先）
+        List<Bid> sortedBids = validBids.stream()
+                .sorted((b1, b2) -> {
+                    int priceComparison = b2.getBidPrice().compareTo(b1.getBidPrice());
+                    if (priceComparison != 0) {
+                        return priceComparison;
+                    }
+                    return b1.getCreatedTime().compareTo(b2.getCreatedTime());
+                })
+                .collect(Collectors.toList());
+        
+        // 检查是否有出价，并且最高出价是否满足保留价
+        if (!sortedBids.isEmpty() && 
+            (auction.getReservePrice() == null || 
+             sortedBids.get(0).getBidPrice().compareTo(auction.getReservePrice()) >= 0)) {
+            // 拍卖成功
+            Bid winningBid = sortedBids.get(0);
+            auction.setAuctionStatus(Auction.STATUS_SOLD);
+            auction.setWinnerUserId(winningBid.getUserId());
+            auction.setFinalPrice(winningBid.getBidPrice());
+            auction.setEndTime(LocalDateTime.now());
+            
+            // 更新获胜者的出价状态
+            winningBid.setBidStatus(3); // 胜出
+            saveBid(winningBid);
+            
+            // 更新其他出价状态
+            for (int i = 1; i < sortedBids.size(); i++) {
+                Bid losingBid = sortedBids.get(i);
+                losingBid.setBidStatus(4); // 失败
+                saveBid(losingBid);
+            }
+            
+            // 创建订单
+            try {
+                com.auction.system.entity.Order order = orderService.createOrderFromAuction(auction, this);
+                if (order == null) {
+                    System.out.println("订单创建被跳过或失败");
+                } else {
+                    System.out.println("成功创建订单，订单号: " + order.getOrderNo());
+                }
+            } catch (Exception e) {
+                // 记录错误但不影响拍卖状态更新
+                System.err.println("创建订单失败: " + e.getMessage());
                 e.printStackTrace();
             }
         } else {
@@ -503,6 +604,12 @@ public class AuctionService {
     private void finishSealedBidAuction(Auction auction) {
         // 获取密封的出价
         List<Bid> sealedBids = getBidsByAuctionIdAndStatus(auction.getId(), 3);
+        
+        // 如果是打包拍卖，只允许一个胜出者
+        if (auction.getIsPackageAuction() != null && auction.getIsPackageAuction()) {
+            finishPackageSealedBidAuction(auction, sealedBids);
+            return;
+        }
         
         // 解密出价并按出价降序、时间升序排序
         List<Bid> sortedBids = sealedBids.stream()
@@ -539,9 +646,80 @@ public class AuctionService {
             
             // 创建订单
             try {
-                orderService.createOrderFromAuction(auction, this);
+                Order order = orderService.createOrderFromAuction(auction, this);
+                if (order == null) {
+                    System.out.println("订单创建被跳过或失败");
+                } else {
+                    System.out.println("成功创建订单，订单号: " + order.getOrderNo());
+                }
             } catch (Exception e) {
                 // 记录错误但不影响拍卖状态更新
+                System.err.println("创建订单失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            // 流拍
+            auction.setAuctionStatus(Auction.STATUS_UNSOLD);
+            auction.setEndTime(LocalDateTime.now());
+            
+            // 更新所有出价状态为失败
+            for (Bid bid : sealedBids) {
+                bid.setBidStatus(4); // 失败
+                saveBid(bid);
+            }
+        }
+    }
+    
+    /**
+     * 结束打包暗拍
+     * @param auction 拍卖对象
+     * @param sealedBids 密封出价列表
+     */
+    private void finishPackageSealedBidAuction(Auction auction, List<Bid> sealedBids) {
+        // 解密出价并按出价降序、时间升序排序
+        List<Bid> sortedBids = sealedBids.stream()
+                .sorted((b1, b2) -> {
+                    int priceComparison = b2.getBidPrice().compareTo(b1.getBidPrice());
+                    if (priceComparison != 0) {
+                        return priceComparison;
+                    }
+                    return b1.getCreatedTime().compareTo(b2.getCreatedTime());
+                })
+                .collect(Collectors.toList());
+        
+        // 检查是否有出价，并且最高出价是否满足保留价
+        if (!sortedBids.isEmpty() && 
+            (auction.getReservePrice() == null || 
+             sortedBids.get(0).getBidPrice().compareTo(auction.getReservePrice()) >= 0)) {
+            // 拍卖成功
+            Bid winningBid = sortedBids.get(0);
+            // 更新出价状态为有效
+            winningBid.setBidStatus(3); // 胜出
+            saveBid(winningBid);
+            
+            auction.setAuctionStatus(Auction.STATUS_SOLD);
+            auction.setWinnerUserId(winningBid.getUserId());
+            auction.setFinalPrice(winningBid.getBidPrice());
+            auction.setEndTime(LocalDateTime.now());
+            
+            // 更新其他出价状态
+            for (int i = 1; i < sortedBids.size(); i++) {
+                Bid losingBid = sortedBids.get(i);
+                losingBid.setBidStatus(4); // 失败
+                saveBid(losingBid);
+            }
+            
+            // 创建订单
+            try {
+                Order order = orderService.createOrderFromAuction(auction, this);
+                if (order == null) {
+                    System.out.println("订单创建被跳过或失败");
+                } else {
+                    System.out.println("成功创建订单，订单号: " + order.getOrderNo());
+                }
+            } catch (Exception e) {
+                // 记录错误但不影响拍卖状态更新
+                System.err.println("创建订单失败: " + e.getMessage());
                 e.printStackTrace();
             }
         } else {

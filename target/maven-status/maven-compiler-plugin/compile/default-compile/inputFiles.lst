@@ -4,6 +4,8 @@ D:\Desktop\Test1215\src\main\java\com\auction\system\service\AuctionSchedulerSer
 D:\Desktop\Test1215\src\main\java\com\auction\system\controller\OrderController.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\repository\BidRepository.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\controller\AuthController.java
+D:\Desktop\Test1215\src\main\java\com\auction\system\controller\ScheduledTaskController.java
+D:\Desktop\Test1215\src\main\java\com\auction\system\entity\ScheduledTask.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\repository\AuctionTemplateRepository.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\service\SystemConfigService.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\service\AuctionService.java
@@ -36,6 +38,8 @@ D:\Desktop\Test1215\src\main\java\com\auction\system\common\GlobalExceptionHandl
 D:\Desktop\Test1215\src\main\java\com\auction\system\service\UserService.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\controller\ConfigController.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\entity\Order.java
+D:\Desktop\Test1215\src\main\java\com\auction\system\repository\ScheduledTaskRepository.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\schedule\AuctionScheduleTask.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\entity\Auction.java
 D:\Desktop\Test1215\src\main\java\com\auction\system\entity\SystemConfig.java
+D:\Desktop\Test1215\src\main\java\com\auction\system\service\ScheduledTaskService.java

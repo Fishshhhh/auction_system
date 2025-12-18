@@ -130,7 +130,8 @@
           <el-input v-model="categoryForm.code" />
         </el-form-item>
         <el-form-item label="属性" prop="properties">
-          <el-input v-model="categoryForm.properties" type="textarea" />
+          <el-input v-model="categoryForm.properties" type="textarea" :rows="4" placeholder='例如: {"品牌":{"苹果","联想"},"尺寸":["13寸","14寸","15寸"]}' />
+          <div style="margin-top: 5px; font-size: 12px; color: #999;">提示：属性格式为JSON对象，支持对象类型（下拉选项）和数组类型（多选）</div>
         </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input v-model="categoryForm.description" type="textarea" />
