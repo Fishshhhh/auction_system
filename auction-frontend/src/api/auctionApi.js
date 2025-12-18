@@ -1,210 +1,145 @@
 import axios from 'axios'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 响应拦截器
-apiClient.interceptors.response.use(
-  response => {
-    // 直接返回整个响应对象，而不是response.data
-    return response
-  },
-  error => {
-    console.error('API Error:', error)
-    return Promise.reject({
-      code: (error.response && error.response.status) || 500,
-      message: error.message || '网络错误',
-      data: null
-    })
-  }
-)
+import baseApiClient from './baseApi';
+import { handleResponse, handleError } from '@/utils/apiHelper';
 
 export const auctionApi = {
   // 获取所有拍卖
   async getAuctions() {
     try {
-      const response = await apiClient.get('/auctions')
-      return response.data
+      const response = await baseApiClient.get('/auctions');
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 根据ID获取拍卖详情
   async getAuctionById(id) {
     try {
-      const response = await apiClient.get(`/auctions/${id}`)
-      return response.data
+      const response = await baseApiClient.get(`/auctions/${id}`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 创建拍卖
   async createAuction(auction) {
     try {
-      const response = await apiClient.post('/auctions', auction)
-      return response.data
+      const response = await baseApiClient.post('/auctions', auction);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 更新拍卖
   async updateAuction(id, auction) {
     try {
-      const response = await apiClient.put(`/auctions/${id}`, auction)
-      return response.data
+      const response = await baseApiClient.put(`/auctions/${id}`, auction);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 删除拍卖
   async deleteAuction(id) {
     try {
-      const response = await apiClient.delete(`/auctions/${id}`)
-      return response.data
+      const response = await baseApiClient.delete(`/auctions/${id}`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 根据状态获取拍卖
   async getAuctionsByStatus(status) {
     try {
-      const response = await apiClient.get(`/auctions/status/${status}`)
-      return response.data
+      const response = await baseApiClient.get(`/auctions/status/${status}`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 获取拍卖出价记录
   async getAuctionBids(id) {
     try {
-      const response = await apiClient.get(`/auctions/${id}/bids`)
-      return response.data
+      const response = await baseApiClient.get(`/auctions/${id}/bids`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 提交出价
   async submitBid(auctionId, bid) {
     try {
-      const response = await apiClient.post(`/auctions/${auctionId}/bids`, bid)
-      return response.data
+      const response = await baseApiClient.post(`/auctions/${auctionId}/bids`, bid);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 获取拍卖关联的资产
   async getAuctionAssets(auctionId) {
     try {
-      const response = await apiClient.get(`/auctions/${auctionId}/assets`)
-      return response.data
+      const response = await baseApiClient.get(`/auctions/${auctionId}/assets`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 获取用户出价记录
   async getUserBids(userId) {
     try {
-      const response = await apiClient.get(`/auctions/user/${userId}/bids`)
-      return response.data
+      const response = await baseApiClient.get(`/auctions/user/${userId}/bids`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
+    }
+  },
+  
+  // 获取所有出价记录
+  async getAllBids() {
+    try {
+      const response = await baseApiClient.get('/auctions/all-bids');
+      return handleResponse(response);
+    } catch (error) {
+      return handleError(error);
     }
   },
   
   // 手动开始拍卖
   async startAuction(id) {
     try {
-      const response = await apiClient.post(`/auctions/${id}/start`)
-      return response.data
+      const response = await baseApiClient.post(`/auctions/${id}/start`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 手动结束拍卖
   async endAuction(id) {
     try {
-      const response = await apiClient.post(`/auctions/${id}/end`)
-      return response.data
+      const response = await baseApiClient.post(`/auctions/${id}/end`);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   },
   
   // 为拍卖添加资产
   async addAssetToAuction(auctionId, auctionAsset) {
     try {
-      const response = await apiClient.post(`/auctions/${auctionId}/assets`, auctionAsset)
-      return response.data
+      const response = await baseApiClient.post(`/auctions/${auctionId}/assets`, auctionAsset);
+      return handleResponse(response);
     } catch (error) {
-      return {
-        code: (error && error.code) || 500,
-        message: (error && error.message) || '未知错误',
-        data: null
-      }
+      return handleError(error);
     }
   }
 }

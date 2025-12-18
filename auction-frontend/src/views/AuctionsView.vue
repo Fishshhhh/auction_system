@@ -236,9 +236,12 @@
             v-model="bidForm.quantity"
             :min="1"
             :max="getMaxBidQuantity()"
-            :disabled="selectedAuction.isPackageAuction"
+            :disabled="isPackageAuction()"
             controls-position="right"
           />
+          <div v-if="isPackageAuction()" class="el-form-item-message">
+            打包拍卖，数量不可更改
+          </div>
         </el-form-item>
         <el-form-item label="您的出价(元/台)" prop="bidPrice">
           <el-input-number
@@ -480,7 +483,16 @@ export default {
     bidAuction(auction) {
       this.selectedAuction = auction;
       this.bidForm.bidPrice = this.getMinBidPrice();
-      this.bidForm.quantity = 1;
+      
+      // 设置默认购买数量
+      if (auction.isPackageAuction) {
+        // 打包拍卖默认购买数量为资产总数
+        const totalQuantity = auction.assets.reduce((sum, asset) => sum + (asset.quantity || 0), 0);
+        this.bidForm.quantity = totalQuantity;
+      } else {
+        this.bidForm.quantity = 1;
+      }
+      
       this.bidDialogVisible = true;
     },
 
@@ -530,7 +542,7 @@ export default {
       try {
         const bidData = {
           auctionId: this.selectedAuction.id,
-          userId: 1,
+          userId: this.$store.state.user.currentUser.id,  // 使用当前登录用户的ID
           bidPrice: this.bidForm.bidPrice,
           quantity: this.bidForm.quantity,
           bidStatus: 1
@@ -714,6 +726,10 @@ export default {
         console.error('解析资产属性失败:', e);
         return {};
       }
+    },
+    
+    isPackageAuction() {
+      return this.selectedAuction && this.selectedAuction.isPackageAuction;
     }
   },
   mounted() {

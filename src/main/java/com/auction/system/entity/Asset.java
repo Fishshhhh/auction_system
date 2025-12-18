@@ -44,16 +44,16 @@ public class Asset {
     private Long ownerId;
     
     @Column(name = "status")
-    private Integer status; // 1-待审核, 2-审核通过, 3-审核拒绝, 4-已上架, 5-已下架, 6-已售出
+    private Integer status = 1; // 1-初始, 2-审核中, 3-审核拒绝, 4-已发布
     
     @Column(name = "auction_status")
-    private Integer auctionStatus; // 1-未开始, 2-进行中, 3-已结束, 4-流拍
+    private Integer auctionStatus = 1; // 1-未拍卖, 2-拍卖中, 3-已成交, 4-已下架
     
     @Column(name = "auction_type")
-    private Integer auctionType; // 1-公开实时竞价 2-暗拍 3-无底价 4-定向 5-降价
+    private Integer auctionType = 1; // 1-公开实时竞价, 2-暗拍, 3-无底价, 4-定向, 5-降价
     
     @Column(name = "properties", columnDefinition = "TEXT")
-    private String properties;
+    private String properties; // 资产属性，JSON格式存储
     
     @CreationTimestamp
     @Column(name = "created_time")
@@ -72,10 +72,16 @@ public class Asset {
     @Column(name = "auction_end_time")
     private LocalDateTime auctionEndTime;
     
-    // 拍卖类型常量
-    public static final int TYPE_OPEN_BIDDING = 1;    // 公开实时竞价
-    public static final int TYPE_SEALED_BID = 2;      // 暗拍
-    public static final int TYPE_NO_RESERVE = 3;      // 无底价
-    public static final int TYPE_DIRECTED = 4;        // 定向
-    public static final int TYPE_DESCENDING = 5;      // 降价
+    // 实用方法
+    public boolean isPublished() {
+        return this.status != null && this.status == 4;
+    }
+    
+    public boolean isAvailableForAuction() {
+        return this.isPublished() && this.auctionStatus != null && this.auctionStatus == 1;
+    }
+    
+    public boolean isOnAuction() {
+        return this.auctionStatus != null && this.auctionStatus == 2;
+    }
 }

@@ -2,10 +2,11 @@
   <div class="my-bids-view">
     <el-card>
       <div slot="header" class="card-header">
-        <span>我的出价</span>
+        <span>出价列表</span>
       </div>
       
       <el-table :data="myBids" stripe style="width: 100%">
+        <el-table-column prop="id" label="出价ID" min-width="100"></el-table-column>
         <el-table-column prop="auctionId" label="拍卖ID" min-width="100">
           <template slot-scope="scope">
             <el-button type="text" @click="viewAuctionDetail(scope.row.auctionId)">
@@ -25,6 +26,7 @@
             </div>
           </template>
         </el-table-column>
+        <el-table-column prop="userId" label="出价人" min-width="100"></el-table-column>
         <el-table-column prop="bidPrice" label="出价金额(元/台)" min-width="100">
           <template slot-scope="scope">
             ¥{{ scope.row.bidPrice }}
@@ -68,6 +70,7 @@
 <script>
 import { auctionApi } from '../api/auctionApi'
 import { assetApi } from '../api/assetApi'
+import { userApi } from '../api/userApi'
 
 export default {
   name: 'MyBidsView',
@@ -80,8 +83,8 @@ export default {
   methods: {
     async loadMyBids() {
       try {
-        // 假设当前用户ID为1
-        const response = await auctionApi.getUserBids(1)
+        // 获取所有出价记录
+        const response = await auctionApi.getAllBids()
         if (response.code === 200) {
           // 确保响应数据是数组类型
           let bids = Array.isArray(response.data) ? response.data : []

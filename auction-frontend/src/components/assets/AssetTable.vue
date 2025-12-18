@@ -29,7 +29,7 @@
         <el-button 
           size="small" 
           @click="viewRelatedAuctions(scope.row)">
-          查看
+          相关拍卖
         </el-button>
       </template>
     </el-table-column>
@@ -40,12 +40,6 @@
           type="primary" 
           @click="createAuction(scope.row)">
           创建拍卖
-        </el-button>
-        <el-button 
-          size="small" 
-          type="warning" 
-          @click="bidAsset(scope.row)">
-          出价
         </el-button>
       </template>
     </el-table-column>
@@ -84,7 +78,7 @@ export default {
       }
     },
     viewRelatedAuctions(asset) {
-      this.$emit('view-related-auctions', asset)
+      this.$emit('view-auctions', asset)
     },
     createAuction(asset) {
       this.$emit('create-auction', asset)

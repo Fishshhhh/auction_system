@@ -1,5 +1,5 @@
 <template>
-  <el-dialog :visible.sync="visible" title="创建拍卖" width="600px" @close="onClose">
+  <el-dialog :visible="visible" title="创建拍卖" width="600px" @close="onClose">
     <el-form :model="form" label-width="120px">
       <el-form-item label="资产名称">
         <span>{{ asset ? asset.name : '' }}</span>
@@ -124,6 +124,10 @@ export default {
       default: () => null
     }
   },
+  model: {
+    prop: 'visible',
+    event: 'close'
+  },
   data() {
     return {
       form: {
@@ -193,9 +197,9 @@ export default {
   },
   methods: {
     onClose() {
-      this.$emit('update:visible', false)
+      this.$emit('close')
     },
-    handleSubmit() {
+    async handleSubmit() {
       this.$emit('submit', this.form)
     }
   }

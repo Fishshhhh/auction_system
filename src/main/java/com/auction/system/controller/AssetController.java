@@ -3,9 +3,7 @@ package com.auction.system.controller;
 import com.auction.system.common.ResponseResult;
 import com.auction.system.entity.Asset;
 import com.auction.system.entity.AssetImage;
-import com.auction.system.entity.Auction;
 import com.auction.system.service.AssetService;
-import com.auction.system.service.AuctionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,9 +21,6 @@ public class AssetController {
     
     @Autowired
     private AssetService assetService;
-    
-    @Autowired
-    private AuctionService auctionService;
     
     @GetMapping
     @Operation(summary = "获取所有资产")
@@ -217,13 +212,5 @@ public class AssetController {
         } catch (Exception e) {
             return ResponseResult.error("设置封面失败: " + e.getMessage());
         }
-    }
-    
-    @GetMapping("/{id}/auctions")
-    @Operation(summary = "获取资产相关的拍卖")
-    public ResponseResult<List<Auction>> getAssetAuctions(
-            @Parameter(description = "资产ID") @PathVariable Long id) {
-        List<Auction> auctions = auctionService.getAuctionsByAssetId(id);
-        return ResponseResult.success(auctions);
     }
 }

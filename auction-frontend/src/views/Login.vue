@@ -67,21 +67,24 @@ export default {
     async handleLogin() {
       try {
         this.loginLoading = true
-        // 注意：这里应该调用认证API，但为了简化我们模拟登录
-        // const response = await userApi.login(this.loginForm)
         
-        // 模拟登录成功
-        const user = {
-          id: 1,
+        // 调用认证API进行登录
+        const response = await userApi.login({
           username: this.loginForm.username,
-          fullName: '系统管理员',
-          userType: 1
-        }
+          password: this.loginForm.password
+        })
         
-        // 使用 Vuex 存储用户信息并跳转到主布局页面
-        this.$store.dispatch('user/login', user)
-        this.$router.push('/layout')
-        this.$message.success('登录成功')
+        if (response.code === 200) {
+          // 登录成功，获取用户信息
+          const user = response.data.user
+          
+          // 使用 Vuex 存储用户信息并跳转到主布局页面
+          this.$store.dispatch('user/login', user)
+          this.$router.push('/layout')
+          this.$message.success('登录成功')
+        } else {
+          this.$message.error(response.message || '登录失败')
+        }
       } catch (error) {
         this.$message.error('登录失败: ' + (error.message || '未知错误'))
       } finally {

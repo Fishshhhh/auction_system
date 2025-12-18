@@ -29,11 +29,11 @@
           </el-menu-item>
           <el-menu-item index="/my-bids">
             <i class="el-icon-document"></i>
-            <span>我的出价</span>
+            <span>出价列表</span>
           </el-menu-item>
           <el-menu-item index="/orders">
             <i class="el-icon-list"></i>
-            <span>我的订单</span>
+            <span>订单列表</span>
           </el-menu-item>
           <el-menu-item index="/config">
             <i class="el-icon-setting"></i>

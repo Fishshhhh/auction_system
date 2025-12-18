@@ -151,6 +151,10 @@ public class AuctionService {
         return bidRepository.findByUserIdOrderByCreatedTimeDesc(userId);
     }
     
+    public List<Bid> getAllBids() {
+        return bidRepository.findAllByOrderByCreatedTimeDesc();
+    }
+    
     /**
      * 处理出价逻辑，根据不同拍卖类型处理
      * @param auctionId 拍卖ID

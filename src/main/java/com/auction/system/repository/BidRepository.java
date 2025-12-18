@@ -10,4 +10,5 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     List<Bid> findByAuctionIdOrderByBidPriceDescCreatedTimeAsc(Long auctionId);
     List<Bid> findByUserIdOrderByCreatedTimeDesc(Long userId);
     List<Bid> findByAuctionIdAndBidStatusOrderByBidPriceDescCreatedTimeAsc(Long auctionId, Integer bidStatus);
+    List<Bid> findAllByOrderByCreatedTimeDesc();
 }

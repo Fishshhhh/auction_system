@@ -179,4 +179,11 @@ public class AuctionController {
         List<Bid> bids = auctionService.getBidsByUserId(userId);
         return ResponseResult.success(bids);
     }
+    
+    @GetMapping("/all-bids")
+    @Operation(summary = "获取所有出价记录")
+    public ResponseResult<List<Bid>> getAllBids() {
+        List<Bid> bids = auctionService.getAllBids();
+        return ResponseResult.success(bids);
+    }
 }

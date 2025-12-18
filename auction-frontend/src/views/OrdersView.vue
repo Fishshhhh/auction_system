@@ -2,11 +2,12 @@
   <div class="orders-view">
     <el-card>
       <div slot="header" class="card-header">
-        <span>我的订单</span>
+        <span>订单列表</span>
       </div>
       
       <el-table :data="processedOrders" stripe style="width: 100%">
         <el-table-column prop="orderNo" label="订单编号" min-width="150"></el-table-column>
+        <el-table-column prop="buyerUserId" label="买家ID" min-width="100"></el-table-column>
         <el-table-column prop="auctionId" label="拍卖编号" min-width="100">
           <template slot-scope="scope">
             <el-button type="text" @click="viewAuctionDetail(scope.row.auctionId)">

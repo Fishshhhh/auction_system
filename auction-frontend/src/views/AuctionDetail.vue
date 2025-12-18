@@ -13,6 +13,7 @@
             <el-card class="box-card">
               <div slot="header" class="clearfix">
                 <span>拍卖信息</span>
+                <el-tag v-if="auction.isPackageAuction" type="danger" style="margin-left: 10px;">打包拍卖</el-tag>
               </div>
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="拍卖编号">{{ auction.id }}</el-descriptions-item>
@@ -118,6 +119,17 @@
                       style="width: 100%">
                     </el-input-number>
                   </el-form-item>
+                  <el-form-item label="购买数量" prop="quantity">
+                    <el-input-number
+                      v-model="bidForm.quantity"
+                      :min="1"
+                      :max="assetInfo.quantity"
+                      :disabled="isPackageAuction()"
+                      controls-position="right"
+                      style="width: 100%">
+                    </el-input-number>
+                    <div v-if="isPackageAuction()" class="el-form-item-help">打包拍卖，数量固定为资产总数</div>
+                  </el-form-item>
                   <el-form-item>
                     <el-button 
                       type="primary" 
@@ -182,7 +194,7 @@
             </el-table-column>
             <el-table-column label="资产数量" min-width="100">
               <template slot-scope="scope">
-                {{ assetInfo.quantity }}
+                {{ scope.row.quantity || assetInfo.quantity }}
               </template>
             </el-table-column>
             <el-table-column prop="createdTime" label="出价时间" min-width="150">
@@ -223,12 +235,12 @@ export default {
       },
       bids: [],
       bidForm: {
-        bidPrice: 0
+        bidPrice: 0,
+        quantity: 1
       },
       bidLoading: false,
       countdown: '00:00:00',
-      countdownTimer: null, // 添加倒计时定时器引用
-      loadAuctionTimer: null // 添加加载拍卖定时器引用
+      countdownTimer: null // 只保留倒计时定时器
     }
   },
   methods: {
@@ -237,10 +249,6 @@ export default {
       if (this.countdownTimer) {
         clearInterval(this.countdownTimer);
         this.countdownTimer = null;
-      }
-      if (this.loadAuctionTimer) {
-        clearInterval(this.loadAuctionTimer);
-        this.loadAuctionTimer = null;
       }
       // 使用更可靠的路由导航方式返回拍卖列表
       this.$router.push('/auctions');
@@ -281,10 +289,6 @@ export default {
             clearInterval(this.countdownTimer);
             this.countdownTimer = null;
           }
-          if (this.loadAuctionTimer) {
-            clearInterval(this.loadAuctionTimer);
-            this.loadAuctionTimer = null;
-          }
           // 如果加载失败，也跳转回拍卖列表
           this.$router.push('/auctions');
         }
@@ -294,10 +298,6 @@ export default {
         if (this.countdownTimer) {
           clearInterval(this.countdownTimer);
           this.countdownTimer = null;
-        }
-        if (this.loadAuctionTimer) {
-          clearInterval(this.loadAuctionTimer);
-          this.loadAuctionTimer = null;
         }
         // 如果出现异常，也跳转回拍卖列表
         this.$router.push('/auctions');
@@ -319,6 +319,13 @@ export default {
               name: assetResponse.data.name,
               quantity: auctionAsset.quantity
             };
+            
+            // 如果是打包拍卖，设置默认购买数量为资产总数
+            if (this.auction.isPackageAuction) {
+              this.bidForm.quantity = auctionAsset.quantity;
+            } else {
+              this.bidForm.quantity = 1;
+            }
           }
         }
       } catch (error) {
@@ -369,8 +376,13 @@ export default {
         
         if (diff <= 0) {
           this.countdown = '已结束';
+          // 清除定时器
+          if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
+          }
           // 重新加载拍卖信息以更新状态
-          this.loadAuction();
+          this.loadAuctionWithoutRestartingCountdown();
           return;
         }
         
@@ -393,6 +405,35 @@ export default {
       this.countdownTimer = setInterval(updateCountdown, 1000);
     },
     
+    // 新增方法：重新加载拍卖信息但不重新启动倒计时
+    async loadAuctionWithoutRestartingCountdown() {
+      // 先检查$route.params.id是否存在
+      const auctionId = this.$route.params && this.$route.params.id;
+      if (!auctionId) {
+        this.$message.error('缺少拍卖ID参数');
+        this.$router.push('/auctions');
+        return;
+      }
+      
+      try {
+        const response = await auctionApi.getAuctionById(auctionId);
+        if (response.code === 200) {
+          this.auction = response.data;
+          this.bidForm.bidPrice = this.getMinBidPrice();
+          // 不再调用startCountdown()
+          
+          // 加载资产信息
+          await this.loadAssetInfo();
+        } else {
+          this.$message.error(response.message || '加载拍卖详情失败');
+          this.$router.push('/auctions');
+        }
+      } catch (error) {
+        this.$message.error('加载拍卖详情失败: ' + (error.message || '未知错误'));
+        this.$router.push('/auctions');
+      }
+    },
+    
     async submitBid() {
       if (!this.auction) return;
       
@@ -400,16 +441,18 @@ export default {
       try {
         const bidData = {
           auctionId: this.auction.id,
-          userId: 1, // 模拟用户ID
+          userId: this.$store.state.user.currentUser.id, // 使用当前登录用户的ID
           bidPrice: this.bidForm.bidPrice,
+          quantity: this.bidForm.quantity,
           bidStatus: 1
         };
         
         const response = await auctionApi.submitBid(this.auction.id, bidData);
         if (response.code === 200) {
           this.$message.success('出价成功!');
-          this.loadAuction(); // 重新加载拍卖信息
-          this.loadBids(); // 重新加载出价记录
+          // 只重新加载必要的数据，避免触发无限循环
+          await this.loadAuctionWithoutRestartingCountdown();
+          this.loadBids();
         } else {
           this.$message.error(response.message || '出价失败');
         }
@@ -427,7 +470,7 @@ export default {
         const response = await auctionApi.startAuction(this.auction.id);
         if (response.code === 200) {
           this.$message.success('拍卖已开始!');
-          this.loadAuction();
+          this.loadAuctionWithoutRestartingCountdown();
         } else {
           this.$message.error(response.message || '操作失败');
         }
@@ -443,7 +486,7 @@ export default {
         const response = await auctionApi.endAuction(this.auction.id);
         if (response.code === 200) {
           this.$message.success('拍卖已结束!');
-          this.loadAuction();
+          this.loadAuctionWithoutRestartingCountdown();
         } else {
           this.$message.error(response.message || '操作失败');
         }
@@ -563,6 +606,10 @@ export default {
     isAdmin() {
       // 模拟管理员权限检查
       return true;
+    },
+    
+    isPackageAuction() {
+      return this.auction && this.auction.isPackageAuction;
     }
   },
   mounted() {
@@ -575,10 +622,6 @@ export default {
       clearInterval(this.countdownTimer);
       this.countdownTimer = null;
     }
-    if (this.loadAuctionTimer) {
-      clearInterval(this.loadAuctionTimer);
-      this.loadAuctionTimer = null;
-    }
   },
   
   destroyed() {
@@ -586,10 +629,6 @@ export default {
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
       this.countdownTimer = null;
-    }
-    if (this.loadAuctionTimer) {
-      clearInterval(this.loadAuctionTimer);
-      this.loadAuctionTimer = null;
     }
   }
 }
@@ -627,5 +666,11 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #f56c6c;
+}
+
+.el-form-item-help {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
 }
 </style>
