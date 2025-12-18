@@ -1,9 +1,14 @@
 <template>
   <div class="assets-view">
-    <el-card>
+    <el-card class="assets-card">
       <div slot="header" class="card-header">
-        <span>资产列表</span>
-        <el-button v-if="isAdmin()" type="primary" @click="showCreateDialog">新增资产</el-button>
+        <div class="header-title">
+          <i class="el-icon-goods"></i>
+          <span>资产列表</span>
+        </div>
+        <el-button v-if="isAdmin()" type="primary" @click="showCreateDialog" icon="el-icon-plus">
+          新增资产
+        </el-button>
       </div>
       
       <asset-table 
@@ -311,11 +316,37 @@ export default {
 <style scoped>
 .assets-view {
   padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100%;
+}
+
+.assets-card {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.assets-card /deep/ .el-card__header {
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+  padding: 15px 20px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-title i {
+  margin-right: 8px;
+  color: #409eff;
 }
 </style>

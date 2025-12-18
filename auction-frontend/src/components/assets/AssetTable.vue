@@ -1,34 +1,54 @@
 <template>
-  <el-table :data="assets" stripe style="width: 100%">
-    <el-table-column prop="assetNo" label="资产编号" min-width="120"></el-table-column>
-    <el-table-column prop="name" label="资产名称" min-width="150"></el-table-column>
-    <el-table-column label="资产分类" min-width="120">
+  <el-table :data="assets" stripe style="width: 100%" class="assets-table">
+    <el-table-column prop="assetNo" label="资产编号" min-width="120">
       <template slot-scope="scope">
-        <span v-if="categories && categories.length > 0">{{ getCategoryName(scope.row.categoryId) }}</span>
-        <span v-else>加载中...</span>
+        <span class="asset-no">{{ scope.row.assetNo }}</span>
       </template>
     </el-table-column>
-    <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
+    <el-table-column prop="name" label="资产名称" min-width="150">
+      <template slot-scope="scope">
+        <span class="asset-name">{{ scope.row.name }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column label="资产分类" min-width="120">
+      <template slot-scope="scope">
+        <el-tag v-if="categories && categories.length > 0" type="info" class="category-tag">
+          {{ getCategoryName(scope.row.categoryId) }}
+        </el-tag>
+        <span v-else class="loading-text">加载中...</span>
+      </template>
+    </el-table-column>
+    <el-table-column prop="description" label="描述" min-width="200">
+      <template slot-scope="scope">
+        <span class="asset-description">{{ scope.row.description }}</span>
+      </template>
+    </el-table-column>
     <el-table-column label="资产属性" min-width="200">
       <template slot-scope="scope">
         <div v-if="scope.row.properties">
-          <div v-for="(value, key) in parseProperties(scope.row.properties)" :key="key">
-            <el-tag size="mini" style="margin: 2px;">{{ key }}: {{ value }}</el-tag>
-          </div>
+          <el-tag 
+            v-for="(value, key) in parseProperties(scope.row.properties)" 
+            :key="key" 
+            size="mini" 
+            class="property-tag">
+            {{ key }}: {{ value }}
+          </el-tag>
         </div>
-        <span v-else>无属性</span>
+        <span v-else class="no-properties">无属性</span>
       </template>
     </el-table-column>
     <el-table-column label="创建时间" min-width="150">
       <template slot-scope="scope">
-        {{ formatDate(scope.row.createdTime) }}
+        <span class="time-text">{{ formatDate(scope.row.createdTime) }}</span>
       </template>
     </el-table-column>
     <el-table-column label="相关拍卖" min-width="100">
       <template slot-scope="scope">
         <el-button 
           size="small" 
-          @click="viewRelatedAuctions(scope.row)">
+          type="text"
+          @click="viewRelatedAuctions(scope.row)"
+          class="related-auctions-button">
           相关拍卖
         </el-button>
       </template>
@@ -38,7 +58,8 @@
         <el-button 
           size="small" 
           type="primary" 
-          @click="createAuction(scope.row)">
+          @click="createAuction(scope.row)"
+          class="create-auction-button">
           创建拍卖
         </el-button>
       </template>
@@ -91,4 +112,54 @@ export default {
 </script>
 
 <style scoped>
+.assets-table {
+  margin-top: 20px;
+}
+
+.assets-table /deep/ .el-table__header th {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.asset-no {
+  font-weight: 500;
+  color: #409eff;
+}
+
+.asset-name {
+  font-weight: 600;
+  color: #303133;
+}
+
+.category-tag {
+  font-weight: 500;
+}
+
+.asset-description {
+  color: #606266;
+}
+
+.property-tag {
+  margin: 2px;
+}
+
+.loading-text,
+.no-properties {
+  color: #909399;
+  font-style: italic;
+}
+
+.time-text {
+  color: #909399;
+}
+
+.related-auctions-button,
+.create-auction-button {
+  font-weight: 500;
+}
+
+.related-auctions-button:hover {
+  color: #409eff;
+}
 </style>

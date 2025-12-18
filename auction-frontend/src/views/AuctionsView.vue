@@ -1,19 +1,24 @@
 <template>
   <div class="auctions-view">
-    <el-card>
+    <el-card class="auctions-card">
       <div slot="header" class="card-header">
-        <span>拍卖列表</span>
+        <div class="header-title">
+          <i class="el-icon-time"></i>
+          <span>拍卖列表</span>
+        </div>
       </div>
       
-      <el-table :data="processedAuctions" stripe style="width: 100%">
+      <el-table :data="processedAuctions" stripe style="width: 100%" class="auctions-table">
         <el-table-column prop="id" label="拍卖编号" min-width="100">
           <template slot-scope="scope">
-            <el-button type="text" @click="viewAuctionDetail(scope.row.id)">{{ scope.row.id }}</el-button>
+            <el-button type="text" @click="viewAuctionDetail(scope.row.id)" class="auction-id-link">
+              {{ scope.row.id }}
+            </el-button>
           </template>
         </el-table-column>
         <el-table-column prop="assetNames" label="资产名称" min-width="150">
           <template slot-scope="scope">
-            <div v-for="asset in scope.row.assets" :key="asset.id">
+            <div v-for="asset in scope.row.assets" :key="asset.id" class="asset-name">
               {{ asset.name }}
             </div>
           </template>
@@ -26,66 +31,66 @@
                   v-for="(value, key) in parseProperties(asset.properties)" 
                   :key="key" 
                   size="mini" 
-                  style="margin: 2px;">
+                  class="property-tag">
                   {{ key }}: {{ value }}
                 </el-tag>
               </div>
-              <div v-else>无属性</div>
+              <div v-else class="no-properties">无属性</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="资产数量" min-width="100">
           <template slot-scope="scope">
-            <div v-for="asset in scope.row.assets" :key="asset.id">
+            <div v-for="asset in scope.row.assets" :key="asset.id" class="asset-quantity">
               {{ asset.quantity || 0 }}
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="startPrice" label="起拍价(元/台)" min-width="100">
           <template slot-scope="scope">
-            ¥{{ scope.row.startPrice }}
+            <span class="price-text">¥{{ scope.row.startPrice }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="currentPrice" label="当前最优价(单台)" min-width="100">
           <template slot-scope="scope">
-            ¥{{ scope.row.currentPrice }}
+            <span class="price-text current-price">¥{{ scope.row.currentPrice }}</span>
           </template>
         </el-table-column>
         <el-table-column label="打包拍卖" min-width="80">
           <template slot-scope="scope">
-            <el-tag v-if="scope.row.isPackageAuction" type="danger">打包</el-tag>
+            <el-tag v-if="scope.row.isPackageAuction" type="danger" class="package-tag">打包</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="startTime" label="开始时间" min-width="150">
           <template slot-scope="scope">
-            {{ formatDate(scope.row.startTime) }}
+            <span class="time-text">{{ formatDate(scope.row.startTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="endTime" label="结束时间" min-width="150">
           <template slot-scope="scope">
-            {{ formatDate(scope.row.endTime) }}
+            <span class="time-text">{{ formatDate(scope.row.endTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="拍卖状态" min-width="100">
           <template slot-scope="scope">
-            <el-tag :type="getAuctionStatusType(scope.row.auctionStatus)">
+            <el-tag :type="getAuctionStatusType(scope.row.auctionStatus)" class="status-tag">
               {{ getAuctionStatusText(scope.row.auctionStatus) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="拍卖类型" min-width="120">
           <template slot-scope="scope">
-            <el-tag :type="getAuctionTypeTagType(scope.row.auctionType)">
+            <el-tag :type="getAuctionTypeTagType(scope.row.auctionType)" class="type-tag">
               {{ getAuctionTypeText(scope.row.auctionType) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="倒计时" min-width="120">
           <template slot-scope="scope">
-            <div v-if="scope.row.auctionStatus === 2 && countdownDisplay[scope.row.id]">
+            <div v-if="scope.row.auctionStatus === 2 && countdownDisplay[scope.row.id]" class="countdown-text">
               {{ countdownDisplay[scope.row.id] }}
             </div>
-            <div v-else>
+            <div v-else class="countdown-default">
               --
             </div>
           </template>
@@ -96,21 +101,24 @@
               v-if="canBid(scope.row)" 
               size="small" 
               type="primary" 
-              @click="bidAuction(scope.row)">
+              @click="bidAuction(scope.row)"
+              class="action-button bid-button">
               出价
             </el-button>
             <el-button 
               v-if="scope.row.auctionStatus === 1" 
               size="small" 
               type="warning" 
-              @click="startAuction(scope.row)">
+              @click="startAuction(scope.row)"
+              class="action-button start-button">
               开始拍卖
             </el-button>
             <el-button 
               v-if="scope.row.auctionStatus === 2" 
               size="small" 
               type="danger" 
-              @click="endAuction(scope.row)">
+              @click="endAuction(scope.row)"
+              class="action-button end-button">
               结束拍卖
             </el-button>
           </template>
@@ -119,88 +127,102 @@
     </el-card>
     
     <!-- 拍卖详情对话框 -->
-    <el-dialog :visible.sync="dialogVisible" title="拍卖详情" width="600px">
+    <el-dialog :visible.sync="dialogVisible" title="拍卖详情" width="600px" class="auction-detail-dialog">
       <div v-if="selectedAuction">
-        <el-descriptions :column="1" border>
+        <el-descriptions :column="1" border class="auction-details">
           <el-descriptions-item label="拍卖编号">{{ selectedAuction.id }}</el-descriptions-item>
           <el-descriptions-item label="资产信息">
-            <div v-for="asset in selectedAuction.assets" :key="asset.id">
-              <div>{{ asset.name }} (数量: {{ asset.quantity || 0 }})</div>
-              <div v-if="asset.properties">
+            <div v-for="asset in selectedAuction.assets" :key="asset.id" class="asset-info">
+              <div class="asset-name">{{ asset.name }} (数量: {{ asset.quantity || 0 }})</div>
+              <div v-if="asset.properties" class="asset-properties">
                 属性:
                 <el-tag 
                   v-for="(value, key) in parseProperties(asset.properties)" 
                   :key="key" 
                   size="mini" 
-                  style="margin: 2px;">
+                  class="property-tag">
                   {{ key }}: {{ value }}
                 </el-tag>
               </div>
             </div>
           </el-descriptions-item>
-          <el-descriptions-item label="起拍价(元/台)">¥{{ selectedAuction.startPrice }}</el-descriptions-item>
-          <el-descriptions-item label="当前价(元/台)">¥{{ selectedAuction.currentPrice }}</el-descriptions-item>
-          <el-descriptions-item label="保留价(元/台)">¥{{ selectedAuction.reservePrice }}</el-descriptions-item>
-          <el-descriptions-item label="一口价(元/台)">¥{{ selectedAuction.buyItNowPrice }}</el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ formatDate(selectedAuction.startTime) }}</el-descriptions-item>
-          <el-descriptions-item label="结束时间">{{ formatDate(selectedAuction.endTime) }}</el-descriptions-item>
+          <el-descriptions-item label="起拍价(元/台)">
+            <span class="price-text">¥{{ selectedAuction.startPrice }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="当前价(元/台)">
+            <span class="price-text current-price">¥{{ selectedAuction.currentPrice }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="保留价(元/台)">
+            <span class="price-text">¥{{ selectedAuction.reservePrice }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="一口价(元/台)">
+            <span class="price-text">¥{{ selectedAuction.buyItNowPrice }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="开始时间">
+            <span class="time-text">{{ formatDate(selectedAuction.startTime) }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="结束时间">
+            <span class="time-text">{{ formatDate(selectedAuction.endTime) }}</span>
+          </el-descriptions-item>
           <el-descriptions-item label="拍卖状态">
-            <el-tag :type="getAuctionStatusType(selectedAuction.auctionStatus)">
+            <el-tag :type="getAuctionStatusType(selectedAuction.auctionStatus)" class="status-tag">
               {{ getAuctionStatusText(selectedAuction.auctionStatus) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="拍卖类型">
-            <el-tag :type="getAuctionTypeTagType(selectedAuction.auctionType)">
+            <el-tag :type="getAuctionTypeTagType(selectedAuction.auctionType)" class="type-tag">
               {{ getAuctionTypeText(selectedAuction.auctionType) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item v-if="selectedAuction.isPackageAuction" label="打包拍卖">
-            <el-tag type="danger">是</el-tag>
+            <el-tag type="danger" class="package-tag">是</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDate(selectedAuction.createdTime) }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">
+            <span class="time-text">{{ formatDate(selectedAuction.createdTime) }}</span>
+          </el-descriptions-item>
           
           <!-- 特定拍卖类型的信息 -->
           <el-descriptions-item v-if="selectedAuction.auctionType === 5" label="初始价(元/台)">
-            ¥{{ selectedAuction.initialPrice }}
+            <span class="price-text">¥{{ selectedAuction.initialPrice }}</span>
           </el-descriptions-item>
           <el-descriptions-item v-if="selectedAuction.auctionType === 5" label="降价阶梯(元/台)">
-            ¥{{ selectedAuction.priceStep }}
+            <span class="price-text">¥{{ selectedAuction.priceStep }}</span>
           </el-descriptions-item>
           <el-descriptions-item v-if="selectedAuction.auctionType === 5" label="降价周期">
             {{ selectedAuction.priceDropInterval }}分钟
           </el-descriptions-item>
           <el-descriptions-item v-if="selectedAuction.auctionType === 5" label="最低价(元/台)">
-            ¥{{ selectedAuction.minPrice }}
+            <span class="price-text">¥{{ selectedAuction.minPrice }}</span>
           </el-descriptions-item>
           <el-descriptions-item v-if="selectedAuction.auctionType === 5" label="下次降价时间">
-            {{ formatDate(selectedAuction.nextPriceDropTime) }}
+            <span class="time-text">{{ formatDate(selectedAuction.nextPriceDropTime) }}</span>
           </el-descriptions-item>
         </el-descriptions>
         
         <!-- 出价记录 -->
-        <div style="margin-top: 20px;">
-          <h4>出价记录</h4>
-          <el-table :data="bids" stripe style="width: 100%">
+        <div class="bids-section">
+          <h3 class="section-title">出价记录</h3>
+          <el-table :data="bids" stripe style="width: 100%" class="bids-table">
             <el-table-column prop="userId" label="出价人ID" min-width="100"></el-table-column>
             <el-table-column prop="bidPrice" label="出价金额(元/台)" min-width="100">
               <template slot-scope="scope">
-                ¥{{ scope.row.bidPrice }}
+                <span class="price-text">¥{{ scope.row.bidPrice }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="quantity" label="数量" min-width="80"></el-table-column>
             <el-table-column label="总金额" min-width="100">
               <template slot-scope="scope">
-                ¥{{ (scope.row.bidPrice * scope.row.quantity).toFixed(2) }}
+                <span class="price-text total-price">¥{{ (scope.row.bidPrice * scope.row.quantity).toFixed(2) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="createdTime" label="出价时间" min-width="150">
               <template slot-scope="scope">
-                {{ formatDate(scope.row.createdTime) }}
+                <span class="time-text">{{ formatDate(scope.row.createdTime) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="bidStatus" label="状态" min-width="100">
               <template slot-scope="scope">
-                <el-tag :type="getBidStatusType(scope.row.bidStatus)">
+                <el-tag :type="getBidStatusType(scope.row.bidStatus)" class="status-tag">
                   {{ getBidStatusText(scope.row.bidStatus) }}
                 </el-tag>
               </template>
@@ -210,26 +232,27 @@
       </div>
       
       <div slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button @click="dialogVisible = false" class="footer-button cancel-button">关闭</el-button>
         <el-button 
           v-if="canBid(selectedAuction)" 
           type="primary" 
-          @click="bidAuction(selectedAuction)">
+          @click="bidAuction(selectedAuction)"
+          class="footer-button bid-button">
           出价
         </el-button>
       </div>
     </el-dialog>
     
     <!-- 出价对话框 -->
-    <el-dialog :visible.sync="bidDialogVisible" title="出价" width="400px">
-      <el-form v-if="selectedAuction" :model="bidForm" label-width="80px">
+    <el-dialog :visible.sync="bidDialogVisible" title="出价" width="400px" class="bid-dialog">
+      <el-form v-if="selectedAuction" :model="bidForm" label-width="80px" class="bid-form">
         <el-form-item label="资产信息">
-          <div v-for="asset in selectedAuction.assets" :key="asset.id">
-            <div>{{ asset.name }} (数量: {{ asset.quantity || 0 }})</div>
+          <div v-for="asset in selectedAuction.assets" :key="asset.id" class="asset-info">
+            <div class="asset-name">{{ asset.name }} (数量: {{ asset.quantity || 0 }})</div>
           </div>
         </el-form-item>
         <el-form-item label="当前价格(元/台)">
-          <span>¥{{ selectedAuction.currentPrice }}</span>
+          <span class="price-text current-price">¥{{ selectedAuction.currentPrice }}</span>
         </el-form-item>
         <el-form-item label="出价数量" prop="quantity">
           <el-input-number
@@ -238,6 +261,7 @@
             :max="getMaxBidQuantity()"
             :disabled="isPackageAuction()"
             controls-position="right"
+            class="quantity-input"
           />
           <div v-if="isPackageAuction()" class="el-form-item-message">
             打包拍卖，数量不可更改
@@ -249,40 +273,42 @@
             :min="getMinBidPrice()"
             :step="selectedAuction.bidIncrement || 100"
             controls-position="right"
+            class="price-input"
           />
         </el-form-item>
         <el-form-item label="总金额">
-          <span>¥{{ (bidForm.bidPrice * bidForm.quantity).toFixed(2) }}</span>
+          <span class="price-text total-price">¥{{ (bidForm.bidPrice * bidForm.quantity).toFixed(2) }}</span>
         </el-form-item>
         <el-alert 
           v-if="selectedAuction.auctionType === 5" 
           title="降价拍卖：出价必须等于当前价格" 
           type="info" 
-          show-icon>
+          show-icon
+          class="auction-alert">
         </el-alert>
       </el-form>
       
       <div slot="footer" class="dialog-footer">
-        <el-button @click="bidDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitBid">提交出价</el-button>
+        <el-button @click="bidDialogVisible = false" class="footer-button cancel-button">取消</el-button>
+        <el-button type="primary" @click="submitBid" class="footer-button submit-button">提交出价</el-button>
       </div>
     </el-dialog>
     
     <!-- 开始拍卖确认对话框 -->
-    <el-dialog :visible.sync="startDialogVisible" title="确认开始拍卖" width="400px">
-      <p v-if="selectedAuction">确认开始拍卖 {{ getAssetNames(selectedAuction) }} 吗？</p>
+    <el-dialog :visible.sync="startDialogVisible" title="确认开始拍卖" width="400px" class="confirmation-dialog">
+      <p v-if="selectedAuction" class="confirmation-text">确认开始拍卖 {{ getAssetNames(selectedAuction) }} 吗？</p>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="startDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmStart">确认开始</el-button>
+        <el-button @click="startDialogVisible = false" class="footer-button cancel-button">取消</el-button>
+        <el-button type="warning" @click="confirmStart" class="footer-button start-button">确认开始</el-button>
       </div>
     </el-dialog>
     
     <!-- 结束拍卖确认对话框 -->
-    <el-dialog :visible.sync="endDialogVisible" title="确认结束拍卖" width="400px">
-      <p v-if="selectedAuction">确认结束拍卖 {{ getAssetNames(selectedAuction) }} 吗？</p>
+    <el-dialog :visible.sync="endDialogVisible" title="确认结束拍卖" width="400px" class="confirmation-dialog">
+      <p v-if="selectedAuction" class="confirmation-text">确认结束拍卖 {{ getAssetNames(selectedAuction) }} 吗？</p>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="endDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmEnd">确认结束</el-button>
+        <el-button @click="endDialogVisible = false" class="footer-button cancel-button">取消</el-button>
+        <el-button type="danger" @click="confirmEnd" class="footer-button end-button">确认结束</el-button>
       </div>
     </el-dialog>
   </div>
@@ -746,9 +772,203 @@ export default {
 </script>
 
 <style scoped>
+.auctions-view {
+  padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100%;
+}
+
+.auctions-card {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.auctions-card /deep/ .el-card__header {
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+  padding: 15px 20px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-title i {
+  margin-right: 8px;
+  color: #409eff;
+}
+
+.auctions-table {
+  margin-top: 20px;
+}
+
+.auctions-table /deep/ .el-table__header th {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+.asset-name {
+  font-weight: 500;
+  color: #303133;
+}
+
+.property-tag {
+  margin: 2px;
+}
+
+.no-properties {
+  color: #909399;
+  font-style: italic;
+}
+
+.asset-quantity {
+  font-weight: 500;
+}
+
+.price-text {
+  font-weight: 600;
+  color: #606266;
+}
+
+.current-price {
+  color: #e6a23c;
+  font-size: 15px;
+}
+
+.total-price {
+  color: #f56c6c;
+}
+
+.package-tag {
+  font-weight: 600;
+}
+
+.time-text {
+  color: #909399;
+}
+
+.status-tag,
+.type-tag {
+  font-weight: 500;
+}
+
+.countdown-text {
+  font-weight: 600;
+  color: #f56c6c;
+}
+
+.countdown-default {
+  color: #909399;
+}
+
+.action-button {
+  margin: 2px;
+}
+
+.bid-button {
+  background-color: #409eff;
+  border-color: #409eff;
+}
+
+.start-button {
+  background-color: #e6a23c;
+  border-color: #e6a23c;
+}
+
+.end-button {
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+}
+
+.auction-id-link {
+  font-weight: 600;
+  color: #409eff;
+}
+
+/* Dialog styles */
+.auction-detail-dialog,
+.bid-dialog,
+.confirmation-dialog {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.auction-details {
+  margin-bottom: 20px;
+}
+
+.asset-info {
+  margin-bottom: 10px;
+}
+
+.asset-info:last-child {
+  margin-bottom: 0;
+}
+
+.asset-properties {
+  margin-top: 5px;
+}
+
+.section-title {
+  color: #303133;
+  border-left: 4px solid #409eff;
+  padding-left: 10px;
+  margin: 20px 0 15px 0;
+}
+
+.bids-section {
+  margin-top: 20px;
+}
+
+.bids-table {
+  margin-top: 10px;
+}
+
+.bid-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+.quantity-input,
+.price-input {
+  width: 100%;
+}
+
+.auction-alert {
+  margin-top: 15px;
+}
+
+.confirmation-text {
+  font-size: 16px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.dialog-footer {
+  text-align: right;
+}
+
+.footer-button {
+  margin-left: 10px;
+}
+
+.cancel-button {
+  border-color: #dcdfe6;
+  color: #606266;
+}
+
+.submit-button {
+  background-color: #409eff;
+  border-color: #409eff;
 }
 </style>
