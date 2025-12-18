@@ -9,7 +9,7 @@
           <el-option
             v-for="category in categories"
             :key="category.id"
-            :label="category.name"
+            :label="category.name"npm
             :value="category.id">
           </el-option>
         </el-select>
@@ -199,7 +199,7 @@ export default {
         this.form.properties = JSON.stringify(this.dynamicProperties);
       }
       
-      this.$emit('submit', this.form);
+      this.$emit('save', this.form);
     }
   }
 }

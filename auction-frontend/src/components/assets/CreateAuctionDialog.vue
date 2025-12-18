@@ -200,7 +200,14 @@ export default {
       this.$emit('close')
     },
     async handleSubmit() {
-      this.$emit('submit', this.form)
+      console.log('提交拍卖表单数据:', this.form); // 添加调试日志
+      
+      // 构造包含资产信息的拍卖对象
+      const auctionData = Object.assign({}, this.form, {
+        assetId: this.asset ? this.asset.id : null
+      });
+      
+      this.$emit('save', auctionData)
     }
   }
 }

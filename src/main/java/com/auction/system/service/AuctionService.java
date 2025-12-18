@@ -2,6 +2,7 @@ package com.auction.system.service;
 
 import com.auction.system.entity.Auction;
 import com.auction.system.entity.AuctionAsset;
+import com.auction.system.entity.AuctionWithAsset;
 import com.auction.system.entity.Bid;
 import com.auction.system.entity.Order;
 import com.auction.system.repository.AuctionRepository;

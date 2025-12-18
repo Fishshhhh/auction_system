@@ -3,6 +3,7 @@ package com.auction.system.controller;
 import com.auction.system.common.ResponseResult;
 import com.auction.system.entity.Auction;
 import com.auction.system.entity.AuctionAsset;
+import com.auction.system.entity.AuctionWithAsset;
 import com.auction.system.entity.Bid;
 import com.auction.system.service.AuctionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,9 +43,49 @@ public class AuctionController {
     @PostMapping
     @Operation(summary = "创建拍卖")
     public ResponseResult<Auction> createAuction(
-            @Parameter(description = "拍卖信息") @RequestBody Auction auction) {
+            @Parameter(description = "拍卖信息") @RequestBody AuctionWithAsset auctionWithAsset) {
         try {
+            // 先保存拍卖基本信息
+            Auction auction = new Auction();
+            // 复制基本属性
+            auction.setTemplateId(auctionWithAsset.getTemplateId());
+            auction.setStartPrice(auctionWithAsset.getStartPrice());
+            auction.setCurrentPrice(auctionWithAsset.getCurrentPrice());
+            auction.setReservePrice(auctionWithAsset.getReservePrice());
+            auction.setBuyItNowPrice(auctionWithAsset.getBuyItNowPrice());
+            auction.setStartTime(auctionWithAsset.getStartTime());
+            auction.setEndTime(auctionWithAsset.getEndTime());
+            auction.setAuctionStatus(auctionWithAsset.getAuctionStatus());
+            auction.setAuctionType(auctionWithAsset.getAuctionType());
+            auction.setBidIncrement(auctionWithAsset.getBidIncrement());
+            auction.setExtendTime(auctionWithAsset.getExtendTime());
+            auction.setExtendThreshold(auctionWithAsset.getExtendThreshold());
+            auction.setInitialPrice(auctionWithAsset.getInitialPrice());
+            auction.setPriceStep(auctionWithAsset.getPriceStep());
+            auction.setPriceDropInterval(auctionWithAsset.getPriceDropInterval());
+            auction.setMinPrice(auctionWithAsset.getMinPrice());
+            auction.setNextPriceDropTime(auctionWithAsset.getNextPriceDropTime());
+            auction.setQualificationRequired(auctionWithAsset.getQualificationRequired());
+            auction.setDepositRate(auctionWithAsset.getDepositRate());
+            auction.setIsPackageAuction(auctionWithAsset.getIsPackageAuction());
+            
             Auction savedAuction = auctionService.saveAuction(auction);
+            
+            // 如果包含资产信息，则同时在auction_asset表中创建关联记录
+            if (auctionWithAsset.getAssetId() != null) {
+                AuctionAsset auctionAsset = new AuctionAsset();
+                auctionAsset.setAuctionId(savedAuction.getId());
+                auctionAsset.setAssetId(auctionWithAsset.getAssetId());
+                auctionAsset.setQuantity(auctionWithAsset.getQuantity() != null ? auctionWithAsset.getQuantity() : 1);
+                auctionAsset.setStartPrice(auctionWithAsset.getStartPrice());
+                auctionAsset.setCurrentPrice(auctionWithAsset.getCurrentPrice());
+                auctionAsset.setReservePrice(auctionWithAsset.getReservePrice());
+                auctionService.saveAuctionAsset(auctionAsset);
+                
+                // 更新拍卖的总价信息
+                auctionService.updateAuctionPriceInfo(savedAuction.getId());
+            }
+            
             return ResponseResult.success("创建成功", savedAuction);
         } catch (Exception e) {
             return ResponseResult.error("创建失败: " + e.getMessage());
@@ -116,6 +157,14 @@ public class AuctionController {
         }
     }
     
+    @GetMapping("/assets/{assetId}")
+    @Operation(summary = "根据资产ID获取相关拍卖")
+    public ResponseResult<List<Auction>> getAuctionsByAssetId(
+            @Parameter(description = "资产ID") @PathVariable Long assetId) {
+        List<Auction> auctions = auctionService.getAuctionsByAssetId(assetId);
+        return ResponseResult.success(auctions);
+    }
+    
     @GetMapping("/status/{status}")
     @Operation(summary = "根据状态获取拍卖")
     public ResponseResult<List<Auction>> getAuctionsByStatus(
@@ -180,7 +229,7 @@ public class AuctionController {
         return ResponseResult.success(bids);
     }
     
-    @GetMapping("/all-bids")
+    @GetMapping("/bids")
     @Operation(summary = "获取所有出价记录")
     public ResponseResult<List<Bid>> getAllBids() {
         List<Bid> bids = auctionService.getAllBids();

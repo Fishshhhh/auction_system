@@ -3,6 +3,16 @@ import baseApiClient from './baseApi';
 import { handleResponse, handleError } from '@/utils/apiHelper';
 
 export const auctionApi = {
+  // 根据资产ID获取相关拍卖
+  async getAuctionsByAssetId(assetId) {
+    try {
+      const response = await baseApiClient.get(`/auctions/assets/${assetId}`);
+      return handleResponse(response);
+    } catch (error) {
+      return handleError(error);
+    }
+  },
+  
   // 获取所有拍卖
   async getAuctions() {
     try {
@@ -106,7 +116,7 @@ export const auctionApi = {
   // 获取所有出价记录
   async getAllBids() {
     try {
-      const response = await baseApiClient.get('/auctions/all-bids');
+      const response = await baseApiClient.get('/auctions/bids');
       return handleResponse(response);
     } catch (error) {
       return handleError(error);

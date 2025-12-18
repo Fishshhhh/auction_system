@@ -1,9 +1,14 @@
 <template>
   <div class="assets-view">
-    <el-card>
+    <el-card class="assets-card">
       <div slot="header" class="card-header">
-        <span>资产列表</span>
-        <el-button v-if="isAdmin()" type="primary" @click="showCreateDialog">新增资产</el-button>
+        <div class="header-title">
+          <i class="el-icon-goods"></i>
+          <span>资产列表</span>
+        </div>
+        <el-button v-if="isAdmin()" type="primary" @click="showCreateDialog" icon="el-icon-plus">
+          新增资产
+        </el-button>
       </div>
       
       <asset-table 
@@ -52,20 +57,20 @@
       :categories="categories"
       @close="createAuctionDialogVisible = false"
       @success="onCreateAuctionSuccess"
-      @submit="handleCreateAuction"
+      @save="saveAuction"
     />
   </div>
 </template>
 
 <script>
-import { assetApi } from '@/api/assetApi';
-import { configApi } from '@/api/configApi';
-import { auctionApi } from '@/api/auctionApi';
 import AssetTable from '@/components/assets/AssetTable.vue';
 import CreateAssetDialog from '@/components/assets/CreateAssetDialog.vue';
 import AssetDetailDialog from '@/components/assets/AssetDetailDialog.vue';
 import RelatedAuctionsDialog from '@/components/assets/RelatedAuctionsDialog.vue';
 import CreateAuctionDialog from '@/components/assets/CreateAuctionDialog.vue';
+import { assetApi } from '@/api/assetApi';
+import { configApi } from '@/api/configApi';
+import { auctionApi } from '@/api/auctionApi';
 
 export default {
   name: 'AssetsView',
@@ -101,7 +106,23 @@ export default {
       try {
         const response = await assetApi.getAssets();
         if (response.code === 200) {
-          this.assets = response.data || [];
+          // 为每个资产加载图片
+          const assetsWithImages = await Promise.all(
+            (response.data || []).map(async (asset) => {
+              try {
+                const imageResponse = await assetApi.getAssetImages(asset.id);
+                if (imageResponse.code === 200) {
+                  asset.images = imageResponse.data || [];
+                }
+                return asset;
+              } catch (error) {
+                console.error(`加载资产 ${asset.id} 的图片失败:`, error);
+                asset.images = []; // 确保即使加载失败也有 images 属性
+                return asset;
+              }
+            })
+          );
+          this.assets = assetsWithImages;
         }
       } catch (error) {
         this.$message.error('加载资产列表失败: ' + (error.message || '未知错误'));
@@ -202,58 +223,44 @@ export default {
           this.$message.success('取消发布成功');
           this.loadAssets();
         } else {
-          this.$message.error(response.message || '取消发布失败');
+          this.$message.error(response.message || '操作失败');
         }
       } catch (error) {
-        this.$message.error('取消发布失败: ' + (error.message || '未知错误'));
+        this.$message.error('操作失败: ' + (error.message || '未知错误'));
       }
     },
     
-    viewAssetDetail(asset) {
+    viewAsset(asset) {
       // 关闭其他所有对话框
       this.closeAllDialogs();
       this.selectedAsset = asset;
       this.detailDialogVisible = true;
     },
     
-    async viewRelatedAuctions(asset) {
+    viewRelatedAuctions(asset) {
       // 关闭其他所有对话框
       this.closeAllDialogs();
       this.selectedAsset = asset;
       
-      // 获取相关拍卖数据
+      // 加载相关拍卖
+      this.loadRelatedAuctions(asset);
+      this.auctionsDialogVisible = true;
+    },
+    
+    async loadRelatedAuctions(asset) {
       try {
-        // 先获取所有拍卖
-        const auctionsResponse = await auctionApi.getAuctions();
-        if (auctionsResponse.code === 200) {
-          const allAuctions = auctionsResponse.data || [];
-          
-          // 获取所有拍卖与资产的关联关系
-          const auctionAssetsPromises = allAuctions.map(auction => 
-            auctionApi.getAuctionAssets(auction.id)
-          );
-          
-          const auctionAssetsResponses = await Promise.all(auctionAssetsPromises);
-          
-          // 过滤出包含当前资产的拍卖
-          this.relatedAuctions = allAuctions.filter((auction, index) => {
-            const auctionAssetsResponse = auctionAssetsResponses[index];
-            if (auctionAssetsResponse.code === 200) {
-              const auctionAssets = auctionAssetsResponse.data || [];
-              return auctionAssets.some(auctionAsset => auctionAsset.assetId === asset.id);
-            }
-            return false;
-          });
+        // 直接通过资产ID获取相关拍卖
+        const response = await auctionApi.getAuctionsByAssetId(asset.id);
+        if (response.code === 200) {
+          this.relatedAuctions = response.data || [];
         } else {
+          this.$message.error(response.message || '加载相关拍卖失败');
           this.relatedAuctions = [];
         }
       } catch (error) {
-        console.error('获取相关拍卖数据失败:', error);
+        this.$message.error('加载相关拍卖失败: ' + (error.message || '未知错误'));
         this.relatedAuctions = [];
-        this.$message.error('获取相关拍卖数据失败: ' + (error.message || '未知错误'));
       }
-      
-      this.auctionsDialogVisible = true;
     },
     
     createAuction(asset) {
@@ -263,9 +270,11 @@ export default {
       this.createAuctionDialogVisible = true;
     },
     
-    async handleCreateAuction(form) {
+    async saveAuction(auctionData) {
       try {
-        const response = await auctionApi.createAuction(form);
+        console.log('准备创建拍卖，数据:', auctionData); // 添加调试日志
+        const response = await auctionApi.createAuction(auctionData);
+        console.log('创建拍卖响应:', response); // 添加调试日志
         if (response.code === 200) {
           this.$message.success('创建拍卖成功');
           this.createAuctionDialogVisible = false;
@@ -274,6 +283,7 @@ export default {
           this.$message.error(response.message || '创建拍卖失败');
         }
       } catch (error) {
+        console.error('创建拍卖异常:', error); // 添加错误日志
         this.$message.error('创建拍卖失败: ' + (error.message || '未知错误'));
       }
     },
@@ -311,11 +321,37 @@ export default {
 <style scoped>
 .assets-view {
   padding: 20px;
+  background-color: #f8f9fa;
+  min-height: 100%;
+}
+
+.assets-card {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.assets-card /deep/ .el-card__header {
+  background-color: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+  padding: 15px 20px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-title i {
+  margin-right: 8px;
+  color: #409eff;
 }
 </style>
