@@ -27,7 +27,7 @@
             {{ formatDate(scope.row.createdTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="相关拍卖" min-width="100">
+        <el-table-column label="相关1拍卖" min-width="100">
           <template slot-scope="scope">
             <el-button 
               v-if="scope.row.auctionStatus" 
